@@ -1,6 +1,6 @@
 # Baseline CLIPSeg — PhraseCut miniv trên Kaggle GPU
 
-File chạy chính: [baseline_clipseg_phrasecut_miniv.ipynb](baseline_clipseg_phrasecut_miniv.ipynb). Notebook tự chứa code; upload **một file `.ipynb`** là đủ, không cần clone repo XLAV hoặc submodule CLIPSeg. Mặc định (`TRAIN_DECODER=False`) là **E1**: đánh giá checkpoint pretrained trên `miniv`, không train. Bật `TRAIN_DECODER=True` để train decoder theo **epoch + batch size** trên PhraseCut `train` (ngoài phạm vi kế hoạch).
+File chạy chính: [baseline_clipseg_phrasecut_miniv.ipynb](baseline_clipseg_phrasecut_miniv.ipynb). Notebook tự chứa code; upload **một file `.ipynb`** là đủ, không cần clone repo XLAV hoặc submodule CLIPSeg. **E1** tái tạo quá trình train CLIPSeg: `TRAIN_DECODER=True` train decoder theo **epoch + batch size** trên **PhraseCut+**, tạo ngẫu nhiên từ PhraseCut `train` (text + ảnh support, mẫu âm, augmentation) như tác giả, rồi đánh giá trên `miniv`. Mặc định `TRAIN_DECODER=False` chỉ đánh giá checkpoint pretrained của tác giả, dùng làm mốc tham chiếu.
 
 ## Chạy trên Kaggle
 
@@ -22,7 +22,23 @@ MAX_QUERIES = None
 
 `steps_per_epoch = ceil(N_train / BATCH_SIZE)`; `total_steps = EPOCHS * steps_per_epoch`. Mỗi epoch duyệt hết các train query đã chọn; không bỏ batch cuối. Không còn tham số `max_iterations`. Scheduler cosine theo số bước thực tế được tính từ epoch/batch, không giữ mốc 20.000 steps của tác giả.
 
-Khi bật `TRAIN_DECODER=True`, notebook đặt `EPOCHS=1`, `BATCH_SIZE=8`, huấn luyện decoder ngẫu nhiên với CLIP pretrained đóng băng. Chọn `TRAIN_INIT="pretrained_decoder"` để fine-tune decoder sẵn có; mặc định `TRAIN_DECODER=False` chỉ chạy baseline pretrained. Đây là ba thiết lập khác nhau, cần ghi rõ khi báo số liệu.
+Khi bật `TRAIN_DECODER=True`, notebook đặt `EPOCHS=1`, `BATCH_SIZE=8`, huấn luyện decoder ngẫu nhiên với CLIP pretrained đóng băng. Chọn `TRAIN_INIT="pretrained_decoder"` để fine-tune decoder sẵn có; mặc định `TRAIN_DECODER=False` chỉ chạy baseline pretrained. Đây là các thiết lập khác nhau, cần ghi rõ khi báo số liệu.
+
+### PhraseCut+
+
+Tác giả không công bố PhraseCut+ thành file. Nó được tạo **ngẫu nhiên mỗi lần lấy mẫu** từ PhraseCut theo `PhraseCutPlus` ([datasets/phrasecut.py](../third_party/clipseg/datasets/phrasecut.py)) và vòng train ([training.py](../third_party/clipseg/training.py)), cấu hình ở [experiments/phrasecut.yaml](../third_party/clipseg/experiments/phrasecut.yaml). Notebook tái tạo các bước đó:
+
+| Bước | Tham số | Theo bản gốc |
+|---|---|---|
+| Crop vuông ngẫu nhiên giữ vật, resize 352 | `AUG_CROP=True` | `find_crop`, `aug_crop` |
+| Mẫu âm: đổi cụm từ, mask rỗng | `NEGATIVE_PROB=0.2` | `negative_prob: 0.2` |
+| Support: mẫu ở **ảnh khác** cùng cụm từ, làm mờ nền, nền còn 10%, crop nới 10%, pad vuông | `TRAIN_MODE="phrasecut_plus"` | `with_visual`, `crop_blur_highlight352` |
+| Template ngẫu nhiên trong 9 mẫu | `PROMPT_AUGMENT=True` | `prompt: shuffle+` |
+| `cond = w·text + (1−w)·ảnh`, `w ~ U(0; 0,5)`, không có support thì `w = 1` | `MIX_TEXT_MAX=0.5` | `mix: True`, `mix_text_max: 0.5` |
+
+`TRAIN_MODE="text_only"` bỏ support và trộn embedding, tương ứng ablation `rd64-uni-novis` của tác giả. Hai điểm khác bản gốc: support luôn lấy từ ảnh khác, và GT rasterize bằng PIL như phần đánh giá. Notebook lưu `phrasecut_plus_samples.png` (4 mẫu: query, support, mask) để kiểm tra trước khi train.
+
+Tác giả train batch 64, AdamW lr 1e-3 → 1e-4 cosine, AMP; `rd64-uni` 20.000 bước, `rd64-uni-refined` (checkpoint HF) 50.000 bước. Với 310.816 query train, 20.000 × 64 tương đương khoảng 4 epoch (`EPOCHS=4`, `BATCH_SIZE=64`). Trên Kaggle nên bật `USE_AMP=True`, đặt `NUM_WORKERS=4` khi ảnh train đã có trong Input, và chia lượt train qua nhiều session bằng `RESUME_CHECKPOINT`.
 
 Cell cấu hình có `MAX_QUERIES=None` để chạy toàn bộ 821 query / 100 ảnh của miniv. Đặt `8` để kiểm tra nhanh, hoặc `200` để chạy E1 gọn theo kế hoạch. `MAX_TRAIN_QUERIES=8` chạy thử train trên 8 query **từ split train**, không lấy miniv để train. Danh sách query được lưu, sampling và chia ảnh dùng seed 42. Mặc định FP32, batch 8; nếu thiếu VRAM, giảm batch xuống 4 hoặc 1. Có thể bật `USE_AMP=True` cho FP16, nhưng phải ghi cấu hình này khi so sánh kết quả.
 
@@ -50,13 +66,13 @@ Nếu Google Drive/Visual Genome không tải được, dùng Add Input với ha
 ## Model và protocol
 
 - Checkpoint: [`CIDAS/clipseg-rd64-refined`](https://huggingface.co/CIDAS/clipseg-rd64-refined), revision `999e0328d9e10b484360c477313983f9afdd7050`.
-- Text prompt mặc định giữ nguyên phrase. Chỉ train decoder với BCE và AdamW; không dùng GT để tạo prompt, không dùng miniv để cập nhật trọng số hoặc chọn checkpoint.
+- Đánh giá dùng text prompt giữ nguyên phrase. Train chỉ cập nhật decoder (BCE, AdamW); support lấy mask GT của chính ảnh support trong split train; miniv không dùng để cập nhật trọng số hoặc chọn checkpoint.
 - Nội suy logits bilinear về kích thước ảnh gốc, sigmoid rồi ngưỡng **0,3**; không min-max normalize.
 - GT là hợp polygon của tất cả instance, rasterize bằng PIL theo [API PhraseCut](https://github.com/ChenyunWu/PhraseCutDataset/blob/276470b7773d8a230aee5b5536876fbc485fb04b/utils/data_transfer.py).
 - Báo mean IoU theo query, cumulative IoU, Dice, mean AP pixel theo query và precision tại IoU 0,3/0,5/0,7/0,9. AP này chưa khẳng định cùng protocol với paper CLIPSeg.
 - Báo kết quả cố định t=0,3 cho toàn bộ query được chọn; báo riêng calibration/evaluation, chia theo image_id 20%/80%. Ngưỡng bổ sung chỉ được chọn trên calibration rồi áp dụng lên evaluation.
 
-Miniv chính thức có [100 ảnh và 821 phrase-region pairs](https://github.com/ChenyunWu/PhraseCutDataset). Đây là baseline text-only với kiến trúc refined; không gọi là tái lập chính xác bảng paper hoặc zero-shot. Repo CLIPSeg gốc có rasterization, preprocessing, visual/text mixing, negative sampling và augmentation khác. Kết quả miniv dùng checkpoint **epoch cuối**, không chọn epoch theo miniv.
+Miniv chính thức có [100 ảnh và 821 phrase-region pairs](https://github.com/ChenyunWu/PhraseCutDataset). Paper báo số trên tập test, nên kết quả miniv không so trực tiếp với bảng paper; không gọi là zero-shot. Kết quả miniv dùng checkpoint **epoch cuối**, không chọn epoch theo miniv.
 
 ## Kết quả xuất ra
 
@@ -72,7 +88,8 @@ Miniv chính thức có [100 ảnh và 821 phrase-region pairs](https://github.c
 | `visualizations/` | Ảnh query, GT, heatmap và overlay |
 | `probabilities/` | `.npy` float32 nếu bật `SAVE_PROBABILITIES` |
 | `image_errors.json` | Lỗi tải / kích thước ảnh, rỗng khi kiểm tra thành công |
-| `training_config.json` | Số epoch, batch, số mẫu train, steps/epoch, tổng steps và cấu hình optimizer |
+| `training_config.json` | Số epoch, batch, số mẫu train, steps/epoch, tổng steps, cấu hình optimizer và PhraseCut+ |
+| `phrasecut_plus_samples.png` | 4 mẫu train: query + template, support, mask đáp án |
 | `training_history.csv` | Train loss, số query và số bước sau mỗi epoch |
 | `train_tasks.json` | Manifest train, tách biệt với miniv |
 | `excluded_train_tasks.json` | Query bị loại do image_id sai kích thước theo wrapper tác giả |
@@ -90,7 +107,7 @@ Các file kết quả kiểm tra ở `outputs/baseline-notebook-check/` và `out
 
 ## E2 và E3
 
-Hai notebook riêng, cùng cách chạy trên Kaggle như E1 (upload một file `.ipynb`, GPU T4 x2, bật Internet, Run All). Phần tải dữ liệu, tải ảnh, model, rasterize GT và metric được chép từ notebook E1 bằng [`scripts/build_experiment_notebooks.py`](../scripts/build_experiment_notebooks.py), nên ba thí nghiệm dùng chung protocol. Sửa E1 xong thì chạy lại script này để đồng bộ. Không sửa tay hai notebook E2/E3.
+Hai notebook riêng, cùng cách chạy trên Kaggle như E1 (upload một file `.ipynb`, GPU T4 x2, bật Internet, Run All). Phần tải dữ liệu, tải ảnh, model, rasterize GT và metric được chép từ notebook E1 bằng [`scripts/build_experiment_notebooks.py`](../scripts/build_experiment_notebooks.py), nên ba thí nghiệm dùng chung protocol. Notebook E1 cũng được sinh từ [`scripts/build_baseline_notebook.py`](../scripts/build_baseline_notebook.py). Sửa E1 trong script đó, rồi chạy lại cả hai script theo thứ tự E1 → E2/E3. Không sửa tay các file `.ipynb`.
 
 | | [E2: text và visual prompt](e2_text_vs_visual_phrasecut_miniv.ipynb) | [E3: template câu](e3_prompt_templates_phrasecut_miniv.ipynb) |
 |---|---|---|
@@ -102,4 +119,15 @@ Hai notebook riêng, cùng cách chạy trên Kaggle như E1 (upload một file 
 
 Cả hai báo metric tại t=0,3 cho mọi biến thể, kèm ΔIoU theo query so với biến thể gốc, CI 95% bootstrap theo ảnh và số query thắng/hòa/thua. Ngưỡng bổ sung chỉ chọn trên calibration. Ở E2, các dòng visual là query × support. ΔIoU lấy trung bình IoU trên các support của mỗi query trước khi so.
 
-Kiểm tra trên CPU tại máy phát triển: E3 với 12 query (`{phrase}` cho mean IoU 0,5967, trùng E1 trên cùng 12 query) và E2 với 5 query × 2 support. Cả hai chạy hết các cell. Chưa chạy trên GPU Kaggle.
+### Đánh giá decoder đã train theo epoch + batch size
+
+E2/E3 không tự train. Epoch và batch size được đặt **một lần** trong notebook E1, rồi E2/E3 nạp decoder đó, để cả ba thí nghiệm dùng cùng một model:
+
+1. Chạy notebook E1 với `TRAIN_DECODER=True`, đặt `EPOCHS`, `BATCH_SIZE` (và `TRAIN_ROOT`). Checkpoint mỗi epoch nằm ở `clipseg_baseline_miniv/checkpoints/decoder_epoch_XXX.pt`. Từ bản này, checkpoint lưu kèm cấu hình train.
+2. Trên Kaggle, **Save Version** notebook E1 để Output thành dataset, rồi **Add Input** output đó vào notebook E2/E3.
+3. Đặt `DECODER_CHECKPOINT` tới checkpoint **epoch cuối**, ví dụ `"/kaggle/input/<output-e1>/clipseg_baseline_miniv/checkpoints/decoder_epoch_005.pt"`. Notebook dừng nếu checkpoint được train trên base model/revision khác. Nếu checkpoint không phải epoch cuối, notebook in cảnh báo. E2 cảnh báo khi decoder train `text_only`, vì decoder đó chưa từng thấy embedding ảnh support.
+4. `summary.json` và `run.json` ghi `decoder`: đường dẫn, sha256, epoch, số bước, batch size, cách khởi tạo và lịch sử loss.
+
+`DECODER_CHECKPOINT=None` (mặc định) dùng decoder pretrained như trước. Hai lượt ghi cùng thư mục output, nên tải ZIP lượt trước khi chạy lượt sau. `BATCH_SIZE` trong E2/E3 là số prompt mỗi lần forward khi inference, không phải batch size train.
+
+Kiểm tra trên CPU tại máy phát triển: E3 với 12 query (`{phrase}` cho mean IoU 0,5967, trùng E1 trên cùng 12 query) và E2 với 5 query × 2 support. Cả hai chạy hết các cell, với decoder pretrained và với decoder train thử trong E1 (8 query, 2 epoch, batch 3). Lượt dùng decoder train thử: E3 `{phrase}` cho 0,0932, trùng E1 đánh giá chính checkpoint đó. Chưa chạy trên GPU Kaggle.

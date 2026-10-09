@@ -42,6 +42,9 @@ def notebook(cells):
 
 
 COMMON_CONFIG = """
+# None = decoder pretrained. Hoặc decoder đã train trong notebook E1 theo EPOCHS + BATCH_SIZE, ví dụ
+# "/kaggle/input/<output-e1>/clipseg_baseline_miniv/checkpoints/decoder_epoch_005.pt"
+DECODER_CHECKPOINT = None
 DATA_ROOT = None                 # ví dụ: "/kaggle/input/phrasecut-miniv/VGPhraseCut_v0"
 MODEL_PATH = None                # thư mục checkpoint offline, hoặc None
 WORK_ROOT = Path("/kaggle/working")
@@ -147,12 +150,42 @@ print(json.dumps(versions, indent=2))
 MODEL_MD = """
 ## 5. Nạp model, inference và metric
 
+Nếu `DECODER_CHECKPOINT` được đặt, decoder được thay bằng decoder đã train trong notebook E1
+(CLIP vẫn là backbone đóng băng của checkpoint gốc). Epoch, batch size và lịch sử loss đọc từ checkpoint
+được ghi vào `summary.json` và `run.json`. E1 chỉ train trên split `train`, nên miniv vẫn là dữ liệu chưa thấy.
+
 Model, rasterize GT và metric giống hệt E1. `predict` nhận **hoặc** danh sách text prompt
 **hoặc** danh sách ảnh support (truyền vào `conditional_pixel_values` của CLIPSeg),
 luôn dự đoán trên cùng một ảnh query. Logits nội suy bilinear về kích thước gốc rồi sigmoid.
 
 `paired_comparison` so từng query với biến thể gốc: ΔIoU = biến thể − gốc, CI 95% bằng
 bootstrap theo **ảnh** (các query cùng ảnh không độc lập), kèm số query thắng/hòa/thua.
+"""
+
+LOAD_DECODER = """
+decoder_info = {"source": "pretrained", "checkpoint": None}
+if DECODER_CHECKPOINT:
+    decoder_path = Path(DECODER_CHECKPOINT)
+    if not decoder_path.is_file():
+        raise FileNotFoundError(f"DECODER_CHECKPOINT không tồn tại: {decoder_path}")
+    checkpoint = torch.load(decoder_path, map_location="cpu", weights_only=True)
+    if checkpoint.get("base_model_id") != MODEL_ID or checkpoint.get("base_model_revision") != MODEL_REVISION:
+        raise ValueError("Checkpoint được train trên base model/revision khác MODEL_ID/MODEL_REVISION.")
+    model.decoder.load_state_dict(checkpoint["decoder"])
+    model.eval()
+    training = checkpoint.get("training") or {}
+    decoder_info = {"source": "e1_trained_decoder", "checkpoint": str(decoder_path),
+        "checkpoint_sha256": sha256(decoder_path), "epoch": checkpoint["epoch"],
+        "global_step": checkpoint["global_step"], "epochs_planned": training.get("epochs"),
+        "batch_size": training.get("batch_size"), "initialization": training.get("initialization"),
+        "selected_train_queries": training.get("selected_train_queries"),
+        # Checkpoint của bản E1 cũ không ghi train_mode: bản đó chỉ train bằng text.
+        "train_mode": training.get("train_mode", "text_only" if training else None),
+        "history": checkpoint.get("history")}
+    if training.get("epochs") is not None and checkpoint["epoch"] != training["epochs"]:
+        print(f"Cảnh báo: checkpoint epoch {checkpoint['epoch']}/{training['epochs']}, không phải epoch cuối.")
+    del checkpoint
+print("Decoder:", json.dumps({k: v for k, v in decoder_info.items() if k != "history"}, ensure_ascii=False))
 """
 
 PREDICT = """
@@ -261,7 +294,7 @@ def print_table(rows):
 def run_metadata(extra):
     inference_seconds = sum(b["forward_resize_seconds"] for b in batch_times)
     prompts = sum(b["prompts"] for b in batch_times)
-    return {**extra,
+    return {**extra, "decoder": decoder_info,
         "model_id": MODEL_ID, "requested_revision": MODEL_REVISION if not MODEL_PATH else None,
         "model_source": model_source, "resolved_commit": getattr(model.config, "_commit_hash", None),
         "phrasecut_api_commit": PHRASECUT_API_COMMIT,
@@ -279,6 +312,9 @@ def run_metadata(extra):
         "timing_note": "Two warmup batches; forward+resize+sigmoid timed with CUDA sync; excludes preprocessing and metric/save.",
     }
 """
+
+MODEL_CELL = (e1("cell-11", end="@torch.inference_mode()") + LOAD_DECODER + "\n"
+              + e1("cell-11", start="def binary_metrics") + PREDICT)
 
 PACKAGE = """
 for path in sorted((OUT / "visualizations").glob("*.png"))[:N_VISUALIZATIONS]:
@@ -327,6 +363,11 @@ E3_CONFIG_MD = """
 `MAX_QUERIES=100` theo kế hoạch; đặt `8` để kiểm tra nhanh. `BATCH_SIZE` là số prompt mỗi lần forward
 (query × template trên cùng ảnh); giảm nếu thiếu VRAM. `DATA_ROOT=None` tự tìm trong `/kaggle/input`
 rồi tải từ nguồn chính thức nếu chưa có.
+
+`DECODER_CHECKPOINT=None` dùng decoder pretrained. Để đánh giá decoder đã train theo `EPOCHS` + `BATCH_SIZE`:
+chạy notebook E1 với `TRAIN_DECODER=True`, lưu version để Output thành dataset, Add Input dataset đó vào notebook này,
+rồi trỏ `DECODER_CHECKPOINT` tới `checkpoints/decoder_epoch_XXX.pt` của **epoch cuối**.
+Kết quả ghi đè thư mục output; tải ZIP của lượt pretrained trước khi chạy lượt có checkpoint.
 """
 
 E3_CONFIG = """
@@ -439,7 +480,7 @@ for template in TEMPLATES:
     table.append({"variant_key": template_keys[template], **table_row(template, reports[template], comparison)})
 write_csv(OUT / "calibration_thresholds.csv", calibration_rows)
 write_csv(OUT / "e3_template_table.csv", table)
-summary = {"experiment": "E3_prompt_templates", "dataset": "VGPhraseCut", "split": "miniv",
+summary = {"experiment": "E3_prompt_templates", "decoder": decoder_info, "dataset": "VGPhraseCut", "split": "miniv",
     "n_queries": len(selected), "complete_official_miniv": len(selected) == len(tasks),
     "baseline_template": BASELINE_TEMPLATE, "templates": reports,
     "metric_note": "IoU averaged per query at t=0.3; ΔIoU paired per query; CI is image-level bootstrap."}
@@ -464,7 +505,7 @@ e3 = notebook([
     ("markdown", E1_CELLS["cell-08"]),
     ("code", e1("cell-09")),
     ("markdown", MODEL_MD),
-    ("code", e1("cell-11", end="@torch.inference_mode()") + "\n" + e1("cell-11", start="def binary_metrics") + PREDICT),
+    ("code", MODEL_CELL),
     ("markdown", E3_RUN_MD),
     ("code", E3_RUN),
     ("markdown", E3_SUMMARY_MD),
@@ -507,6 +548,11 @@ E2_CONFIG_MD = """
 `MAX_QUERIES=30` theo kế hoạch; nếu không đủ query có support hợp lệ, notebook chạy với số có được và ghi rõ N.
 `MIN_SUPPORT_BOX_FRACTION` loại support quá nhỏ (tổng diện tích box của vật / diện tích ảnh support),
 vì crop từ vật vài pixel không còn là ảnh mẫu có nghĩa.
+
+`DECODER_CHECKPOINT=None` dùng decoder pretrained. Để đánh giá decoder đã train theo `EPOCHS` + `BATCH_SIZE`:
+chạy notebook E1 với `TRAIN_DECODER=True`, lưu version để Output thành dataset, Add Input dataset đó vào notebook này,
+rồi trỏ `DECODER_CHECKPOINT` tới `checkpoints/decoder_epoch_XXX.pt` của **epoch cuối**.
+Kết quả ghi đè thư mục output; tải ZIP của lượt pretrained trước khi chạy lượt có checkpoint.
 """
 
 E2_CONFIG = """
@@ -517,6 +563,7 @@ SUPPORTS_PER_QUERY = 3           # mỗi query dùng đúng K support từ K ả
 MIN_SUPPORT_BOX_FRACTION = 0.02  # bỏ support có vật quá nhỏ
 CROP_PADDING = 0.1               # nới bbox support 10% mỗi phía trước khi crop
 DARK_FACTOR = 0.1                # nền giữ 10% độ sáng, như Bảng 2 của paper
+BATCH_SIZE = 9                   # số visual prompt mỗi forward (support × biến thể); giảm nếu thiếu VRAM
 OUTPUT_NAME = "clipseg_e2_text_vs_visual"
 """ + COMMON_CONFIG
 
@@ -587,7 +634,7 @@ E2_RUN_MD = """
 ## 6. Tạo visual prompt và chạy 5 biến thể
 
 `support_views` tạo 3 visual prompt từ ảnh support và mask GT **của ảnh support**.
-Text: một forward cho `text_phrase` và `text_name`. Visual: mỗi support một forward cho 3 biến thể.
+Text: một forward cho `text_phrase` và `text_name`. Visual: gom (support × 3 biến thể) thành batch `BATCH_SIZE`.
 Mask lưu tại `masks/<variant>/<task_id>.png` (text) và `masks/<variant>/<task_id>__<support_task_id>.png` (visual).
 """
 
@@ -596,6 +643,10 @@ TEXT_VARIANTS = ["text_phrase", "text_name"]
 VISUAL_VARIANTS = ["visual_crop", "visual_dark", "visual_crop_dark"]
 VARIANTS = TEXT_VARIANTS + VISUAL_VARIANTS
 BASELINE_VARIANT = "text_phrase"
+assert BATCH_SIZE >= 1
+if decoder_info.get("train_mode") == "text_only":
+    print("CẢNH BÁO: decoder chỉ được train bằng text, chưa từng thấy embedding ảnh support. "
+          "Kết quả visual chỉ dùng làm ablation, không so ngang với decoder train PhraseCut+.")
 (OUT / "visualizations").mkdir(exist_ok=True)
 
 def support_views(image, mask, crop_padding, dark_factor):
@@ -660,18 +711,19 @@ for index, pair in enumerate(tqdm(pairs, desc="E2 queries")):
         sweep_rows.extend(sweep)
         save_mask(probability, variant, task_id)
         first_probabilities[variant], first_ious[variant] = probability, row["iou"]
-    for support_index, support in enumerate(pair["supports"]):
-        views = views_for(support)
-        probabilities, seconds = predict(image, supports=[views[v] for v in VISUAL_VARIANTS])
-        batch_times.append({"prompts": len(VISUAL_VARIANTS), "forward_resize_seconds": seconds})
-        for variant, probability in zip(VISUAL_VARIANTS, probabilities):
+    jobs = [(support, variant) for support in pair["supports"] for variant in VISUAL_VARIANTS]
+    for start in range(0, len(jobs), BATCH_SIZE):
+        chunk = jobs[start:start + BATCH_SIZE]
+        probabilities, seconds = predict(image, supports=[views_for(s)[v] for s, v in chunk])
+        batch_times.append({"prompts": len(chunk), "forward_resize_seconds": seconds})
+        for (support, variant), probability in zip(chunk, probabilities):
             row, sweep = evaluate(probability, target, {**base, "variant": variant,
                 "prompt": f"support:{support['task_id']}", "support_task_id": str(support["task_id"]),
                 "support_image_id": int(support["image_id"])})
             rows.append(row)
             sweep_rows.extend(sweep)
             save_mask(probability, variant, f"{task_id}__{support['task_id']}")
-            if support_index == 0:
+            if support is pair["supports"][0]:
                 first_probabilities[variant], first_ious[variant] = probability, row["iou"]
     if index < N_VISUALIZATIONS:
         save_pair_figure(image, target, pair, first_probabilities, first_ious, index)
@@ -712,7 +764,7 @@ for variant in VARIANTS:
     table.append(table_row(variant, reports[variant], comparison))
 write_csv(OUT / "calibration_thresholds.csv", calibration_rows)
 write_csv(OUT / "e2_variant_table.csv", table)
-summary = {"experiment": "E2_text_vs_visual", "dataset": "VGPhraseCut", "split": "miniv",
+summary = {"experiment": "E2_text_vs_visual", "decoder": decoder_info, "dataset": "VGPhraseCut", "split": "miniv",
     "n_queries": len(pairs), "supports_per_query": SUPPORTS_PER_QUERY, "baseline_variant": BASELINE_VARIANT,
     "variants": reports,
     "metric_note": ("Text rows: one per query; visual rows: one per query×support. "
@@ -720,7 +772,7 @@ summary = {"experiment": "E2_text_vs_visual", "dataset": "VGPhraseCut", "split":
 write_json(OUT / "summary.json", summary)
 write_json(OUT / "run.json", run_metadata({"experiment": "E2_text_vs_visual", "max_queries": MAX_QUERIES,
     "supports_per_query": SUPPORTS_PER_QUERY, "min_support_box_fraction": MIN_SUPPORT_BOX_FRACTION,
-    "crop_padding": CROP_PADDING, "dark_factor": DARK_FACTOR, "variants": VARIANTS,
+    "crop_padding": CROP_PADDING, "dark_factor": DARK_FACTOR, "variants": VARIANTS, "batch_size": BATCH_SIZE,
     "pairs_sha256": sha256(OUT / "e2_pairs.json"),
     "calibration_image_ids": sorted(calibration_ids),
     "evaluation_image_ids": sorted(set(query_image_ids) - calibration_ids)}))
@@ -739,7 +791,7 @@ e2 = notebook([
     ("markdown", E1_CELLS["cell-08"]),
     ("code", e1("cell-09")),
     ("markdown", MODEL_MD),
-    ("code", e1("cell-11", end="@torch.inference_mode()") + "\n" + e1("cell-11", start="def binary_metrics") + PREDICT),
+    ("code", MODEL_CELL),
     ("markdown", E2_RUN_MD),
     ("code", E2_RUN),
     ("markdown", E2_SUMMARY_MD),
