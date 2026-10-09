@@ -43,10 +43,12 @@ def notebook(cells):
 
 COMMON_CONFIG = """
 # None = decoder pretrained. Hoặc decoder đã train trong notebook E1 theo EPOCHS + BATCH_SIZE, ví dụ
-# "/kaggle/input/<output-e1>/clipseg_baseline_miniv/checkpoints/decoder_epoch_005.pt"
+# "/kaggle/input/<output-e1>/clipseg_e1/checkpoints/decoder_epoch_004.pt"
 DECODER_CHECKPOINT = None
 DATA_ROOT = None                 # ví dụ: "/kaggle/input/phrasecut-miniv/VGPhraseCut_v0"
+EVAL_SPLIT = "miniv"             # "miniv" | "val" | "test"; support của E2 lấy trong cùng split
 MODEL_PATH = None                # thư mục checkpoint offline, hoặc None
+IMAGE_ROOT = None                # thư mục chứa ảnh <image_id>.jpg; None = tìm trong mọi Kaggle Input
 WORK_ROOT = Path("/kaggle/working")
 REQUIRE_GPU = True               # False chỉ khi kiểm tra trên máy CPU
 USE_AMP = False                  # mặc định FP32 như E1
@@ -480,8 +482,8 @@ for template in TEMPLATES:
     table.append({"variant_key": template_keys[template], **table_row(template, reports[template], comparison)})
 write_csv(OUT / "calibration_thresholds.csv", calibration_rows)
 write_csv(OUT / "e3_template_table.csv", table)
-summary = {"experiment": "E3_prompt_templates", "decoder": decoder_info, "dataset": "VGPhraseCut", "split": "miniv",
-    "n_queries": len(selected), "complete_official_miniv": len(selected) == len(tasks),
+summary = {"experiment": "E3_prompt_templates", "decoder": decoder_info, "dataset": "VGPhraseCut", "split": EVAL_SPLIT,
+    "n_queries": len(selected), "complete_official_split": len(selected) == len(tasks),
     "baseline_template": BASELINE_TEMPLATE, "templates": reports,
     "metric_note": "IoU averaged per query at t=0.3; ΔIoU paired per query; CI is image-level bootstrap."}
 write_json(OUT / "summary.json", summary)
@@ -764,7 +766,7 @@ for variant in VARIANTS:
     table.append(table_row(variant, reports[variant], comparison))
 write_csv(OUT / "calibration_thresholds.csv", calibration_rows)
 write_csv(OUT / "e2_variant_table.csv", table)
-summary = {"experiment": "E2_text_vs_visual", "decoder": decoder_info, "dataset": "VGPhraseCut", "split": "miniv",
+summary = {"experiment": "E2_text_vs_visual", "decoder": decoder_info, "dataset": "VGPhraseCut", "split": EVAL_SPLIT,
     "n_queries": len(pairs), "supports_per_query": SUPPORTS_PER_QUERY, "baseline_variant": BASELINE_VARIANT,
     "variants": reports,
     "metric_note": ("Text rows: one per query; visual rows: one per query×support. "

@@ -16,21 +16,22 @@ def cell(kind, source, tag=None):
 
 
 cell("markdown", """
-# XLAV — CLIPSeg baseline trên PhraseCut miniv
+# XLAV — E1: train và đánh giá CLIPSeg trên PhraseCut
 
 Tái tạo quá trình train CLIPSeg: CLIP đóng băng + decoder, train trên **PhraseCut+** (text + ảnh support,
 mẫu âm, augmentation, tạo ngẫu nhiên từ PhraseCut) theo **epoch và batch size**, rồi đánh giá text prompt
-trên PhraseCut miniv. `TRAIN_DECODER=False` chỉ đánh giá checkpoint pretrained của tác giả (mốc tham chiếu).
+trên PhraseCut (`EVAL_SPLIT`: miniv, val hoặc test). `TRAIN_DECODER=False` chỉ đánh giá checkpoint pretrained
+của tác giả (mốc tham chiếu). Train dùng mọi GPU có sẵn (Kaggle T4 x2) bằng `DataParallel`.
 Notebook tự chứa toàn bộ code, chỉ cần upload file `.ipynb` lên Kaggle.
 
 1. Bật **GPU** và **Internet** trong Settings của notebook Kaggle.
 2. Chạy lần lượt các cell hoặc **Run All**. Lượt đầu tải checkpoint và dữ liệu.
 3. Đặt `EPOCHS` và `BATCH_SIZE`, chọn dữ liệu train tại `TRAIN_ROOT` nếu đã Add Input.
-4. Kết quả được ghi vào `/kaggle/working/clipseg_baseline_miniv`, kèm file ZIP để tải về.
+4. Kết quả được ghi vào `/kaggle/working/clipseg_e1`, kèm file ZIP để tải về.
 
 Theo [PhraseCutDataset chính thức](https://github.com/ChenyunWu/PhraseCutDataset),
-`miniv` có **100 ảnh / 821 query**. `MAX_QUERIES=None` chạy toàn bộ query hợp lệ;
-đặt `200` để chạy tập con theo kế hoạch E1, hoặc `8` để kiểm tra nhanh.
+`miniv` có **100 ảnh / 821 query**, `test` có **2.545 ảnh / 14.354 query** (split paper dùng để báo số),
+`val` có khoảng 2.900 ảnh. `MAX_QUERIES=None` chạy toàn bộ query của split; đặt `8` để kiểm tra nhanh.
 
 Protocol: resize logits bilinear về kích thước ảnh gốc → sigmoid → threshold 0,3;
 không min-max normalize. GT là hợp của polygon của mọi instance được phrase nhắc tới,
@@ -38,7 +39,7 @@ rasterize theo PIL như API PhraseCut. Mean IoU được tính **theo query**, c
 là tổng intersection / tổng union. AP là AP pixel theo query rồi trung bình,
 **chưa khẳng định tương đương AP trong paper CLIPSeg**.
 
-Đánh giá trên miniv, không phải tập test của paper, nên chưa so trực tiếp với bảng paper.
+Chỉ kết quả trên `test` mới đặt cạnh bảng paper được, và vẫn khác protocol (rasterize GT, cách tính AP).
 Không gọi là zero-shot vì decoder được huấn luyện trên PhraseCut. Decoder train ở đây dùng tiếp cho E2/E3
 qua `DECODER_CHECKPOINT`.
 """
@@ -64,7 +65,7 @@ cell("markdown", """
 ## 2. Cấu hình
 
 Mặc định tải dữ liệu online. Nếu đã Add Input một Kaggle Dataset chứa dữ liệu,
-đặt `DATA_ROOT` tới thư mục chứa `refer_miniv.json`, `image_data_split.json`
+đặt `DATA_ROOT` tới thư mục chứa `refer_<EVAL_SPLIT>.json`, `image_data_split.json`
 (hoặc `image_data_split3000.json`) và `images/`. Để `None` sẽ tự tìm trong `/kaggle/input`
 rồi tải từ nguồn chính thức nếu chưa có. `MODEL_PATH=None` tải Hugging Face;
 muốn offline thì trỏ tới thư mục snapshot có config, processor, tokenizer và weights.
@@ -78,9 +79,11 @@ from pathlib import Path
 
 DATA_ROOT = None                 # ví dụ: "/kaggle/input/phrasecut-miniv/VGPhraseCut_v0"
 MODEL_PATH = None                # thư mục checkpoint offline, hoặc None
+IMAGE_ROOT = None                # thư mục chứa ảnh <image_id>.jpg; None = tìm trong mọi Kaggle Input
 WORK_ROOT = Path("/kaggle/working")
 REQUIRE_GPU = True               # False chỉ khi kiểm tra trên máy CPU
-MAX_QUERIES = None               # None = toàn bộ miniv; 200 = E1 gọn; 8 = smoke
+EVAL_SPLIT = "miniv"             # "miniv" (100 ảnh) | "val" (~2.900 ảnh) | "test" (2.545 ảnh, split của paper)
+MAX_QUERIES = None               # None = toàn bộ split; 8 = smoke
 BATCH_SIZE = 8
 EPOCHS = 1
 TRAIN_DECODER = False            # E1 = False: chỉ đánh giá checkpoint pretrained
@@ -95,7 +98,8 @@ AUG_CROP = True                  # crop vuông ngẫu nhiên, giữ vật trong 
 LEARNING_RATE = 1e-3
 MIN_LEARNING_RATE = 1e-4
 WEIGHT_DECAY = 0.01
-NUM_WORKERS = 0                  # có thể tăng lên 2 sau khi cache đầy đủ ảnh
+NUM_WORKERS = 4                  # worker tạo mẫu PhraseCut+ (Kaggle có 4 CPU); 0 khi chạy trên Windows
+MULTI_GPU = True                 # train chia mỗi batch cho mọi GPU (T4 x2) bằng DataParallel
 RESUME_CHECKPOINT = None         # checkpoint epoch của chính notebook, hoặc None
 USE_AMP = False                  # mặc định FP32 cho baseline
 SEED = 42
@@ -144,6 +148,7 @@ assert BATCH_SIZE >= 1
 assert isinstance(EPOCHS, int) and EPOCHS >= 1
 assert TRAIN_INIT in ["random_decoder", "pretrained_decoder"]
 assert TRAIN_MODE in ["phrasecut_plus", "text_only"]
+assert EVAL_SPLIT in ["miniv", "val", "test"]
 assert 0 <= NEGATIVE_PROB < 1 and 0 <= MIX_TEXT_MAX <= 1
 assert MAX_TRAIN_QUERIES is None or MAX_TRAIN_QUERIES >= 1
 assert 0 <= MIN_LEARNING_RATE <= LEARNING_RATE and LEARNING_RATE > 0
@@ -166,18 +171,19 @@ if REQUIRE_GPU and not torch.cuda.is_available():
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 if device.type == "cuda":
     try:
-        torch.ones(1, device=device).add_(1).item()
+        for index in range(torch.cuda.device_count()):
+            torch.ones(1, device=f"cuda:{index}").add_(1).item()
     except RuntimeError as exc:
         raise RuntimeError("PyTorch của Kaggle không chạy được trên GPU này (thường gặp với P100). "
                            "Chọn Accelerator GPU T4 x2 rồi restart session.") from exc
 assert not USE_AMP or device.type == "cuda", "FP16 AMP yêu cầu CUDA."
 WORK_ROOT.mkdir(parents=True, exist_ok=True)
-OUT = WORK_ROOT / "clipseg_baseline_miniv"
+OUT = WORK_ROOT / "clipseg_e1"
 OUT.mkdir(parents=True, exist_ok=True)
 # Xóa dấu hoàn thành cũ trước khi bắt đầu lượt mới.
 (OUT / "summary.json").unlink(missing_ok=True)
 (OUT / "run.json").unlink(missing_ok=True)
-(WORK_ROOT / "clipseg_baseline_miniv.zip").unlink(missing_ok=True)
+(WORK_ROOT / "clipseg_e1.zip").unlink(missing_ok=True)
 
 def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -196,16 +202,18 @@ def sha256(path):
 
 versions = {name: importlib.metadata.version(name) for name in
             ["torch", "transformers", "numpy", "Pillow", "scikit-learn", "matplotlib", "gdown"]}
-print("Device:", device, "| GPU:", torch.cuda.get_device_name(0) if device.type == "cuda" else "CPU")
+print("Device:", device, "| GPU:", [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
+      if device.type == "cuda" else "CPU")
 print(json.dumps(versions, indent=2))
 """
 )
 cell("markdown", """
 ## 3. Lấy annotation chính thức và chọn query
 
-Chỉ tải `refer_miniv.json` và metadata ảnh từ Drive ID trong
+Chỉ tải `refer_<EVAL_SPLIT>.json` và metadata ảnh từ Drive ID trong
 [downloader tác giả](https://github.com/ChenyunWu/PhraseCutDataset/blob/276470b7773d8a230aee5b5536876fbc485fb04b/download_dataset.py).
-Chỉ các ảnh miniv được chọn mới được tải, không tải toàn bộ Visual Genome.
+Chỉ ảnh của các query được chọn mới được tải, không tải toàn bộ Visual Genome. Với `test`/`val`
+(khoảng 2.500–2.900 ảnh) nên Add Input dataset đã có ảnh để khỏi tải lại mỗi lượt.
 Nếu Google Drive hết quota, Add Input dữ liệu đã tải rồi đặt `DATA_ROOT`.
 
 Chia calibration/evaluation theo **image_id**, seed 42, trước khi đọc prediction.
@@ -213,6 +221,10 @@ Nếu giới hạn số query, sampling bằng seed, lưu đúng danh sách vào
 """
 )
 cell("code", """
+# Drive ID của annotation chính thức, theo download_dataset.py của PhraseCut.
+REFER_DRIVE_IDS = {"miniv": "1oLcTQ1blTIQyu5ZMelQN2HSniuQaxM4E", "val": "1UyojArOFPlsSeNbA9fHWjCjOOU-OCohG",
+                   "test": "1jrzXm1gcq6f5hNDeamZd0UmyyHUv61IZ", "train": "1qx-0q6r9r0YUGpoyT0B8HJKmUFWQDSu7"}
+
 def metadata_path(root):
     for name in ["image_data_split.json", "image_data_split3000.json"]:
         candidate = root / name
@@ -221,17 +233,17 @@ def metadata_path(root):
     return root / "image_data_split.json"
 
 if DATA_ROOT is None:
-    candidates = sorted(Path("/kaggle/input").rglob("refer_miniv.json")) if Path("/kaggle/input").exists() else []
+    candidates = sorted(Path("/kaggle/input").rglob(f"refer_{EVAL_SPLIT}.json")) if Path("/kaggle/input").exists() else []
     candidates = [p.parent for p in candidates if metadata_path(p.parent).is_file()]
     if len(candidates) > 1:
-        raise ValueError("Có nhiều dataset miniv; đặt DATA_ROOT rõ ràng: " + str(candidates))
-    data_root = candidates[0] if candidates else WORK_ROOT / "phrasecut_miniv"
+        raise ValueError(f"Có nhiều dataset chứa refer_{EVAL_SPLIT}.json; đặt DATA_ROOT rõ ràng: " + str(candidates))
+    data_root = candidates[0] if candidates else WORK_ROOT / "phrasecut_annotations"
 else:
     data_root = Path(DATA_ROOT)
     if not data_root.is_dir():
         raise FileNotFoundError(f"DATA_ROOT không tồn tại: {data_root}")
 data_root.mkdir(parents=True, exist_ok=True)
-annotation_path = data_root / "refer_miniv.json"
+annotation_path = data_root / f"refer_{EVAL_SPLIT}.json"
 info_path = metadata_path(data_root)
 
 def ensure_json(path, file_id):
@@ -255,11 +267,11 @@ def ensure_json(path, file_id):
     except Exception as exc:
         raise RuntimeError(f"Không tải được {path.name}. Bật Internet, hoặc Add Input dataset và đặt DATA_ROOT.") from exc
 
-tasks = ensure_json(annotation_path, "1oLcTQ1blTIQyu5ZMelQN2HSniuQaxM4E")
+tasks = ensure_json(annotation_path, REFER_DRIVE_IDS[EVAL_SPLIT])
 image_info = ensure_json(info_path, "1xB9eExJo35K3DQu8PnBWZ1q_OMoMl8-i")
-info_by_id = {int(row["image_id"]): row for row in image_info if row["split"] == "miniv"}
+info_by_id = {int(row["image_id"]): row for row in image_info if row["split"] == EVAL_SPLIT}
 assert len({str(t["task_id"]) for t in tasks}) == len(tasks), "Task ID bị trùng."
-assert all(int(t["image_id"]) in info_by_id for t in tasks), "Annotation không thuộc split miniv."
+assert all(int(t["image_id"]) in info_by_id for t in tasks), f"Annotation không thuộc split {EVAL_SPLIT}."
 assert all(t.get("Polygons") and t.get("phrase", "").strip() for t in tasks), "Thiếu polygon GT hoặc phrase."
 assert all(re.fullmatch(r"[A-Za-z0-9_-]+", str(t["task_id"])) for t in tasks), "Task ID không hợp lệ."
 
@@ -278,7 +290,7 @@ group_for_image = {i: "calibration" if i in calibration_ids else "evaluation" fo
 assert not calibration_ids.intersection(set(image_ids) - calibration_ids)
 write_json(OUT / "selected_tasks.json", [{"task_id": str(t["task_id"]), "image_id": int(t["image_id"]),
     "phrase": t["phrase"], "group": group_for_image[int(t["image_id"])]} for t in selected])
-print(f"Annotation: {len(tasks)} queries / {len(info_by_id)} miniv images")
+print(f"Annotation {EVAL_SPLIT}: {len(tasks)} queries / {len(info_by_id)} images")
 print(f"Selected: {len(selected)} queries / {len(image_ids)} images; calibration {n_cal} images")
 """
 )
@@ -293,11 +305,23 @@ dừng lượt chạy: không âm thầm bỏ query để tạo số liệu đ�
 cell("code", """
 image_cache = WORK_ROOT / "phrasecut_image_cache"
 image_cache.mkdir(parents=True, exist_ok=True)
-local_images = {}
-for suffix in ["*.jpg", "*.jpeg", "*.png"]:
-    for path in sorted(data_root.rglob(suffix)):
-        if path.stem.isdigit() and int(path.stem) in image_ids:
-            local_images.setdefault(int(path.stem), path)
+def image_search_roots(*extra):
+    \"\"\"Nơi tìm ảnh <image_id>.jpg: IMAGE_ROOT nếu đặt, nếu không thì mọi Kaggle Input; cộng thư mục annotation.\"\"\"
+    roots = [Path(IMAGE_ROOT)] if IMAGE_ROOT else ([Path("/kaggle/input")] if Path("/kaggle/input").exists() else [])
+    roots += [Path(r) for r in extra]
+    # Bỏ thư mục nằm trong thư mục đã quét để không quét hai lần.
+    return [r for i, r in enumerate(roots) if r.is_dir() and not any(r == q or q in r.parents for q in roots[:i])]
+
+def index_local_images(roots, wanted_ids):
+    index = {}
+    for search_root in roots:
+        for path in sorted(search_root.rglob("*")):
+            if path.suffix.lower() in {".jpg", ".jpeg", ".png"} and path.stem.isdigit() and int(path.stem) in wanted_ids:
+                index.setdefault(int(path.stem), path)
+    return index
+
+local_images = index_local_images(image_search_roots(data_root), set(image_ids))
+print(f"Ảnh có sẵn trong Input: {len(local_images)}/{len(image_ids)}; phần còn lại tải từ Visual Genome")
 
 def valid_image(path, info):
     with Image.open(path) as image:
@@ -511,11 +535,14 @@ def visual_prompt(image, mask, size=352, blur_sigma=3.0, background_factor=0.1, 
     crop = F.pad(crop, (left, side - width - left, top, side - height - top))
     return F.interpolate(crop.unsqueeze(0), size=(size, size), mode="nearest").squeeze(0)
 
-def mix_conditionals(text_cond, visual_cond, support_valid, max_text_weight):
-    \"\"\"cond = w·text + (1−w)·ảnh, w ~ U(0, max) theo từng mẫu; mẫu không có support dùng w = 1.\"\"\"
-    weights = torch.rand(text_cond.shape[0], 1) * max_text_weight
-    weights = torch.maximum(weights, (~support_valid.cpu()).float()[:, None])
-    weights = weights.to(text_cond.device, text_cond.dtype)
+def sample_text_weights(support_valid, max_text_weight):
+    \"\"\"w ~ U(0, max) theo từng mẫu; mẫu không có support dùng w = 1. Lấy mẫu trên CPU trước khi chia GPU.\"\"\"
+    weights = torch.rand(len(support_valid), 1) * max_text_weight
+    return torch.maximum(weights, (~support_valid.cpu()).float()[:, None])
+
+def mix_conditionals(text_cond, visual_cond, text_weights):
+    \"\"\"cond = w·text + (1−w)·ảnh.\"\"\"
+    weights = text_weights.to(text_cond.device, text_cond.dtype)
     return text_cond * weights + visual_cond * (1 - weights)
 
 training_metadata = {"enabled": TRAIN_DECODER}
@@ -531,7 +558,7 @@ if TRAIN_DECODER:
             raise FileNotFoundError(f"TRAIN_ROOT không tồn tại: {train_root}")
     train_root.mkdir(parents=True, exist_ok=True)
     train_annotation_path = train_root / "refer_train.json"
-    train_raw = ensure_json(train_annotation_path, "1qx-0q6r9r0YUGpoyT0B8HJKmUFWQDSu7")
+    train_raw = ensure_json(train_annotation_path, REFER_DRIVE_IDS["train"])
     train_info_by_id = {int(row["image_id"]): row for row in image_info if row["split"] == "train"}
     # Các image_id sai kích thước được loại trong wrapper CLIPSeg gốc.
     bad_image_ids = {150417, 285665, 498246, 61564, 285743, 498269, 498010, 150516,
@@ -557,16 +584,14 @@ if TRAIN_DECODER:
     if not train_tasks:
         raise ValueError("Train dataset rỗng.")
     train_image_ids = {int(t["image_id"]) for t in train_tasks}
-    assert train_image_ids.isdisjoint(info_by_id), "Train/miniv bị trùng image_id."
+    assert train_image_ids.isdisjoint(info_by_id), f"Train/{EVAL_SPLIT} bị trùng image_id."
     assert len({str(t["task_id"]) for t in train_tasks}) == len(train_tasks), "Train task ID bị trùng."
     write_json(OUT / "excluded_train_tasks.json", excluded_train)
     write_json(OUT / "train_tasks.json", [{"task_id": str(t["task_id"]), "image_id": int(t["image_id"]),
                                           "phrase": t["phrase"]} for t in train_tasks])
-    train_local_images = {}
-    for suffix in ["*.jpg", "*.jpeg", "*.png"]:
-        for path in sorted(train_root.rglob(suffix)):
-            if path.stem.isdigit() and int(path.stem) in train_image_ids:
-                train_local_images.setdefault(int(path.stem), path)
+    train_local_images = index_local_images(image_search_roots(train_root), train_image_ids)
+    print(f"Ảnh train có sẵn trong Input: {len(train_local_images)}/{len(train_image_ids)}; "
+          "phần còn lại tải từ Visual Genome trong lúc train")
     train_image_cache = WORK_ROOT / "phrasecut_train_image_cache"
     train_image_cache.mkdir(parents=True, exist_ok=True)
 
@@ -675,10 +700,10 @@ if TRAIN_DECODER:
         "prompt_augment": "shuffle+" if PROMPT_AUGMENT else None, "aug_crop": AUG_CROP,
         "visual_prompt": "crop_blur_highlight352" if TRAIN_MODE == "phrasecut_plus" else None,
         "unique_train_phrases": len(all_train_phrases), "queries_with_support": queries_with_support,
-        "protocol": f"{TRAIN_MODE}; frozen CLIP; final epoch checkpoint; miniv held out"}
+        "protocol": f"{TRAIN_MODE}; frozen CLIP; final epoch checkpoint; eval split held out"}
     write_json(OUT / "training_config.json", training_metadata)
     # Hình kiểm tra 4 mẫu PhraseCut+; fork_rng để không làm đổi RNG của lượt train.
-    with torch.random.fork_rng():
+    with torch.random.fork_rng(devices=[]):  # mẫu tạo trên CPU
         torch.manual_seed(SEED)
         preview = [PhraseCutPlusDataset()[i] for i in torch.randperm(len(train_tasks))[:4].tolist()]
     fig, axes = plt.subplots(len(preview), 3, figsize=(9, 3 * len(preview)), squeeze=False)
@@ -708,7 +733,7 @@ AMP scaler và RNG để resume tại ranh giới epoch. `RESUME_CHECKPOINT` ph�
 manifest và cấu hình (kể cả tổng EPOCHS); không tự đổi lịch LR khi tiếp tục.
 
 Checkpoint chỉ lưu decoder vì CLIP đóng băng; ghép với base model/revision cố định để chạy lại.
-Không dùng miniv để chọn epoch tốt nhất. Kết quả cuối notebook là model ở **epoch cuối**.
+Không dùng split đánh giá để chọn epoch tốt nhất. Kết quả cuối notebook là model ở **epoch cuối**.
 """
 )
 cell("code", """
@@ -744,29 +769,57 @@ if TRAIN_DECODER:
         state = checkpoint["numpy_rng"]
         np.random.set_state((state[0], state[1].numpy().astype(np.uint32), state[2], state[3], state[4]))
         if device.type == "cuda" and checkpoint["cuda_rng"] is not None:
-            torch.cuda.set_rng_state_all([value.cpu() for value in checkpoint["cuda_rng"]])
+            # Session resume có thể khác số GPU; chỉ khôi phục các GPU đang có.
+            for index, value in enumerate(checkpoint["cuda_rng"][:torch.cuda.device_count()]):
+                torch.cuda.set_rng_state(value.cpu(), index)
+
+    class TrainForward(torch.nn.Module):
+        \"\"\"Một bước forward train. DataParallel chia batch của module này cho từng GPU.\"\"\"
+        def __init__(self, model):
+            super().__init__()
+            self.model = model
+
+        def forward(self, pixel_values, input_ids, attention_mask, support_pixel_values=None, text_weights=None):
+            size = pixel_values.shape[0]
+            context = torch.autocast(device_type="cuda", dtype=torch.float16) if USE_AMP else nullcontext()
+            with context:
+                cond = self.model.get_conditional_embeddings(batch_size=size, input_ids=input_ids,
+                                                             attention_mask=attention_mask)
+                if support_pixel_values is not None:
+                    visual_cond = self.model.get_conditional_embeddings(
+                        batch_size=size, conditional_pixel_values=support_pixel_values)
+                    cond = mix_conditionals(cond, visual_cond, text_weights)
+                logits = self.model(pixel_values=pixel_values, conditional_embeddings=cond).logits
+            # HF bỏ chiều batch khi batch = 1; giữ [B,H,W] để DataParallel gộp đúng.
+            return logits.reshape(size, *logits.shape[-2:])
+
+    train_gpus = torch.cuda.device_count() if device.type == "cuda" else 0
+    use_data_parallel = MULTI_GPU and train_gpus > 1
+    train_forward = TrainForward(model)
+    if use_data_parallel:
+        train_forward = torch.nn.DataParallel(train_forward)
+        assert BATCH_SIZE >= train_gpus, "BATCH_SIZE phải ≥ số GPU."
+    print(f"Train trên {train_gpus if use_data_parallel else 1} {'GPU' if device.type == 'cuda' else 'CPU'}"
+          f"{' (DataParallel, mỗi GPU ~' + str(math.ceil(BATCH_SIZE / train_gpus)) + ' mẫu/batch)' if use_data_parallel else ''}")
     for epoch in range(start_epoch, EPOCHS):
         model.train()
         model.clip.eval()
         model.decoder.train()
         loss_sum, seen = 0.0, 0
+        for index in range(train_gpus):
+            torch.cuda.reset_peak_memory_stats(index)
         epoch_started = time.perf_counter()
         for batch in tqdm(train_loader, desc=f"Train epoch {epoch + 1}/{EPOCHS}"):
-            batch = {key: value.to(device, non_blocking=True) for key, value in batch.items()}
             optimizer.zero_grad(set_to_none=True)
-            context = torch.autocast(device_type="cuda", dtype=torch.float16) if USE_AMP else nullcontext()
-            with context:
-                size = batch["labels"].shape[0]
-                cond = model.get_conditional_embeddings(batch_size=size, input_ids=batch["input_ids"],
-                                                        attention_mask=batch["attention_mask"])
-                if TRAIN_MODE == "phrasecut_plus":
-                    visual_cond = model.get_conditional_embeddings(
-                        batch_size=size, conditional_pixel_values=batch["support_pixel_values"])
-                    cond = mix_conditionals(cond, visual_cond, batch["support_valid"], MIX_TEXT_MAX)
-                logits = model(pixel_values=batch["pixel_values"], conditional_embeddings=cond).logits
-                if logits.ndim == 2:
-                    logits = logits.unsqueeze(0)
-                loss = F.binary_cross_entropy_with_logits(logits.float(), batch["labels"])
+            inputs = {key: batch[key] for key in ["pixel_values", "input_ids", "attention_mask"]}
+            if TRAIN_MODE == "phrasecut_plus":
+                inputs["support_pixel_values"] = batch["support_pixel_values"]
+                inputs["text_weights"] = sample_text_weights(batch["support_valid"], MIX_TEXT_MAX)
+            if not use_data_parallel:
+                # DataParallel tự chép từng phần batch từ CPU sang đúng GPU; một GPU thì chép trước.
+                inputs = {key: value.to(device, non_blocking=True) for key, value in inputs.items()}
+            logits = train_forward(**inputs)
+            loss = F.binary_cross_entropy_with_logits(logits.float(), batch["labels"].to(logits.device, non_blocking=True))
             if not torch.isfinite(loss):
                 raise ValueError("Training loss NaN/Inf; dừng để kiểm tra dữ liệu/AMP.")
             old_scale = scaler.get_scale()
@@ -784,7 +837,8 @@ if TRAIN_DECODER:
         synchronize()
         history.append({"epoch": epoch + 1, "train_loss": loss_sum / seen, "n_queries": seen,
             "optimizer_steps_total": global_step, "learning_rate_next": optimizer.param_groups[0]["lr"],
-            "epoch_seconds": time.perf_counter() - epoch_started})
+            "epoch_seconds": time.perf_counter() - epoch_started, "gpus": train_gpus if use_data_parallel else min(train_gpus, 1),
+            "peak_gpu_mb": [round(torch.cuda.max_memory_allocated(i) / 1024**2) for i in range(train_gpus)]})
         np_state = np.random.get_state()
         checkpoint = {"epoch": epoch + 1, "global_step": global_step, "config_signature": signature,
             "decoder": model.decoder.state_dict(), "optimizer": optimizer.state_dict(),
@@ -806,11 +860,11 @@ if TRAIN_DECODER:
     write_json(OUT / "training_config.json", training_metadata)
     # Backbone không nhận gradient; chỉ decoder có tham số trainable.
     assert all(p.grad is None for p in model.clip.parameters())
-    print("Training complete. Evaluate final epoch on miniv next.")
+    print(f"Training complete. Evaluate final epoch on {EVAL_SPLIT} next.")
 """
 )
 cell("markdown", """
-## 8. Inference toàn bộ query miniv đã chọn
+## 8. Inference toàn bộ query đã chọn của split đánh giá
 
 Warm-up trước khi đo. Batch các phrase trên cùng ảnh để resize output đúng kích thước.
 Lưu mask theo `task_id.png`, đúng quy ước PhraseCut; GT, ảnh phân tích và probability tùy chọn
@@ -894,10 +948,10 @@ print(f"Completed {len(rows)} queries; wall time {elapsed_all:.1f}s")
 cell("markdown", """
 ## 9. Tổng hợp và chọn ngưỡng trên calibration
 
-Báo cáo chính `selected_miniv_fixed_threshold` dùng t=0,3 cho toàn bộ query đã chọn.
+Báo cáo chính `selected_fixed_threshold` dùng t=0,3 cho toàn bộ query đã chọn.
 Ngưỡng bổ sung được chọn bằng mean IoU **chỉ trên calibration**, rồi báo riêng trên evaluation.
 Không chọn template hoặc threshold theo evaluation. Nếu `MAX_QUERIES` khác None,
-ghi đây là tập con, không gắn nhãn kết quả full miniv.
+ghi đây là tập con, không gắn nhãn kết quả toàn split.
 """
 )
 cell("code", """
@@ -911,9 +965,9 @@ evaluation_fixed = [r for r in rows if r["group"] == "evaluation"]
 evaluation_tuned = [r for r in sweep_rows if r["group"] == "evaluation" and r["threshold"] == best_threshold]
 summary = {
     "training": training_metadata,
-    "dataset": "VGPhraseCut", "split": "miniv", "complete_official_miniv": len(selected) == len(tasks),
+    "dataset": "VGPhraseCut", "split": EVAL_SPLIT, "complete_official_split": len(selected) == len(tasks),
     "threshold": THRESHOLD, "calibration_selected_threshold": best_threshold,
-    "selected_miniv_fixed_threshold": summarize(rows),
+    "selected_fixed_threshold": summarize(rows),
     "calibration_fixed_threshold": summarize([r for r in rows if r["group"] == "calibration"]),
     "evaluation_fixed_threshold": summarize(evaluation_fixed),
     "evaluation_calibrated_threshold": summarize(evaluation_tuned),
@@ -953,7 +1007,7 @@ print(f"Forward+resize+sigmoid: {run['forward_resize_ms_per_query']:.2f} ms/quer
 cell("markdown", """
 ## 10. Xem hình và đóng gói
 
-Trong Kaggle Output, tải `clipseg_baseline_miniv.zip`. Giữ `run.json`, `selected_tasks.json`
+Trong Kaggle Output, tải `clipseg_e1.zip`. Giữ `run.json`, `selected_tasks.json`
 và `sample_metrics.csv` cùng bảng số liệu để chạy lại đúng protocol.
 Masks dùng ngưỡng cố định 0,3; ngưỡng calibration bổ sung chỉ được báo trong summary.
 """
@@ -962,7 +1016,7 @@ cell("code", """
 for path in sorted((OUT / "visualizations").glob("*.png"))[:N_VISUALIZATIONS]:
     with Image.open(path) as image:
         display(image.copy())
-archive = WORK_ROOT / "clipseg_baseline_miniv.zip"
+archive = WORK_ROOT / "clipseg_e1.zip"
 training_artifacts = {"training_config.json", "training_history.csv", "train_tasks.json", "excluded_train_tasks.json", "checkpoints"}
 with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
     for path in sorted(OUT.rglob("*")):

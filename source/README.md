@@ -7,7 +7,7 @@ File chạy chính: [e1_train_eval_phrasecut.ipynb](e1_train_eval_phrasecut.ipyn
 1. Tạo notebook Kaggle, dùng **Import Notebook** để upload file trên.
 2. Trong Settings, chọn Accelerator **GPU T4 x2** (tránh P100: PyTorch mới của Kaggle có thể không hỗ trợ) và bật Internet. Baseline dùng GPU đầu tiên.
 3. Đặt `EPOCHS`, `BATCH_SIZE`, và `TRAIN_ROOT` nếu đã Add Input tập train. Chạy **Run All**. Mặc định tải annotation từ nguồn PhraseCut chính thức, ảnh theo URL trong metadata và base checkpoint từ Hugging Face.
-4. Tải `clipseg_baseline_miniv.zip` trong Output. Các file gốc nằm tại `/kaggle/working/clipseg_baseline_miniv/`.
+4. Tải `clipseg_e1.zip` trong Output. Các file gốc nằm tại `/kaggle/working/clipseg_e1/`.
 
 Ví dụ cấu hình huấn luyện:
 
@@ -43,6 +43,24 @@ Tác giả train batch 64, AdamW lr 1e-3 → 1e-4 cosine, AMP; `rd64-uni` 20.000
 Cell cấu hình có `MAX_QUERIES=None` để chạy toàn bộ 821 query / 100 ảnh của miniv. Đặt `8` để kiểm tra nhanh, hoặc `200` để chạy E1 gọn theo kế hoạch. `MAX_TRAIN_QUERIES=8` chạy thử train trên 8 query **từ split train**, không lấy miniv để train. Danh sách query được lưu, sampling và chia ảnh dùng seed 42. Mặc định FP32, batch 8; nếu thiếu VRAM, giảm batch xuống 4 hoặc 1. Có thể bật `USE_AMP=True` cho FP16, nhưng phải ghi cấu hình này khi so sánh kết quả.
 
 Cell cài đặt pin `transformers==4.55.4` và `gdown==5.2.0`. PyTorch/CUDA và các thư viện phân tích dùng bản sẵn có của Kaggle, được ghi vào `run.json`; không cài `requirements.txt` dành cho Windows lên Kaggle. Chạy notebook trong session mới để tránh import nhầm Transformers đã được nạp trước khi cài.
+
+## Đánh giá toàn bộ PhraseCut và train trên 2 GPU
+
+**Split đánh giá.** `EVAL_SPLIT` chọn split của PhraseCut. Mặc định `MAX_QUERIES=None` chạy toàn bộ query của split đó.
+
+| `EVAL_SPLIT` | Ảnh / query | Dùng khi |
+|---|---|---|
+| `"miniv"` | 100 / 821 | Kiểm tra nhanh |
+| `"val"` | ~2.900 ảnh | Chọn cấu hình, ngưỡng |
+| `"test"` | 2.545 / 14.354 | **Báo số cuối**, cùng split với bảng paper |
+
+Notebook tự tìm `refer_<split>.json` trong Input. Nếu không có, nó tải từ Google Drive chính thức của PhraseCut. Ảnh tải theo URL Visual Genome. Với `test`/`val`, nên dùng dataset có sẵn ảnh để khỏi tải lại khoảng 2.500 ảnh mỗi lượt. Có thể train và đánh giá trên `test` trong cùng một lượt: split train không trùng ảnh với split đánh giá, và notebook kiểm tra điều này.
+
+**Hai GPU.** Với `MULTI_GPU=True` (mặc định), phần train bọc model bằng `torch.nn.DataParallel`. Mỗi batch `BATCH_SIZE` được chia đều cho mọi GPU, ví dụ batch 64 chia 32 + 32 trên T4 x2, nên ý nghĩa `EPOCHS`/`BATCH_SIZE` không đổi. Số GPU và VRAM đỉnh của từng GPU ghi trong `training_history.csv` (cột `gpus`, `peak_gpu_mb`); cả hai GPU phải có VRAM > 0. Phần đánh giá vẫn chạy trên một GPU, vì nhẹ và bị giới hạn bởi tính metric trên CPU.
+
+**CPU.** Mỗi mẫu PhraseCut+ đọc 2 ảnh, rasterize polygon và blur trên CPU. Vì vậy `NUM_WORKERS=4` là mặc định, bằng số CPU của Kaggle. Nếu GPU vẫn rảnh (xem `nvidia-smi` hoặc thời gian mỗi epoch), nút cổ chai là CPU chứ không phải GPU. Chạy trên Windows thì đặt `NUM_WORKERS=0`.
+
+Từ bản này, thư mục kết quả đổi thành `/kaggle/working/clipseg_e1`, và `summary.json` dùng khóa `split`, `complete_official_split`, `selected_fixed_threshold` thay cho các khóa có chữ `miniv`.
 
 ## Dùng dữ liệu đã Add Input
 
@@ -123,9 +141,9 @@ Cả hai báo metric tại t=0,3 cho mọi biến thể, kèm ΔIoU theo query s
 
 E2/E3 không tự train. Epoch và batch size được đặt **một lần** trong notebook E1, rồi E2/E3 nạp decoder đó, để cả ba thí nghiệm dùng cùng một model:
 
-1. Chạy notebook E1 với `TRAIN_DECODER=True`, đặt `EPOCHS`, `BATCH_SIZE` (và `TRAIN_ROOT`). Checkpoint mỗi epoch nằm ở `clipseg_baseline_miniv/checkpoints/decoder_epoch_XXX.pt`. Từ bản này, checkpoint lưu kèm cấu hình train.
+1. Chạy notebook E1 với `TRAIN_DECODER=True`, đặt `EPOCHS`, `BATCH_SIZE` (và `TRAIN_ROOT`). Checkpoint mỗi epoch nằm ở `clipseg_e1/checkpoints/decoder_epoch_XXX.pt`. Từ bản này, checkpoint lưu kèm cấu hình train.
 2. Trên Kaggle, **Save Version** notebook E1 để Output thành dataset, rồi **Add Input** output đó vào notebook E2/E3.
-3. Đặt `DECODER_CHECKPOINT` tới checkpoint **epoch cuối**, ví dụ `"/kaggle/input/<output-e1>/clipseg_baseline_miniv/checkpoints/decoder_epoch_005.pt"`. Notebook dừng nếu checkpoint được train trên base model/revision khác. Nếu checkpoint không phải epoch cuối, notebook in cảnh báo. E2 cảnh báo khi decoder train `text_only`, vì decoder đó chưa từng thấy embedding ảnh support.
+3. Đặt `DECODER_CHECKPOINT` tới checkpoint **epoch cuối**, ví dụ `"/kaggle/input/<output-e1>/clipseg_e1/checkpoints/decoder_epoch_004.pt"`. Notebook dừng nếu checkpoint được train trên base model/revision khác. Nếu checkpoint không phải epoch cuối, notebook in cảnh báo. E2 cảnh báo khi decoder train `text_only`, vì decoder đó chưa từng thấy embedding ảnh support.
 4. `summary.json` và `run.json` ghi `decoder`: đường dẫn, sha256, epoch, số bước, batch size, cách khởi tạo và lịch sử loss.
 
 `DECODER_CHECKPOINT=None` (mặc định) dùng decoder pretrained như trước. Hai lượt ghi cùng thư mục output, nên tải ZIP lượt trước khi chạy lượt sau. `BATCH_SIZE` trong E2/E3 là số prompt mỗi lần forward khi inference, không phải batch size train.

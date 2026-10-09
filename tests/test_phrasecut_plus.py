@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 
 NOTEBOOK = Path(__file__).resolve().parents[1] / "source" / "e1_train_eval_phrasecut.ipynb"
-NAMES = {"random_square_crop", "gaussian_blur", "visual_prompt", "mix_conditionals"}
+NAMES = {"random_square_crop", "gaussian_blur", "visual_prompt", "sample_text_weights", "mix_conditionals"}
 
 
 def notebook_functions():
@@ -74,10 +74,13 @@ class PhraseCutPlusTests(unittest.TestCase):
         text = torch.ones(4, 8)
         visual = torch.zeros(4, 8)
         valid = torch.tensor([True, True, False, False])
-        mixed = self.f["mix_conditionals"](text, visual, valid, 0.5)
+        weights = self.f["sample_text_weights"](valid, 0.5)
+        self.assertEqual(weights.shape, (4, 1))
+        self.assertTrue(((weights[:2] >= 0) & (weights[:2] <= 0.5)).all())
+        torch.testing.assert_close(weights[2:], torch.ones(2, 1))
+        mixed = self.f["mix_conditionals"](text, visual, weights)
         torch.testing.assert_close(mixed[2:], text[2:])
-        weights = mixed[:2, 0]
-        self.assertTrue(((weights >= 0) & (weights <= 0.5)).all())
+        torch.testing.assert_close(mixed[:2], weights[:2].expand(2, 8))
 
 
 if __name__ == "__main__":
