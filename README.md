@@ -8,6 +8,8 @@ Kế hoạch hiện tại: [docs/implementation-plan.md](docs/implementation-pla
 
 Mô hình chính: `CIDAS/clipseg-rd64-refined`. Code nhận text hoặc ảnh support, xuất probability `.npy`, mask, heatmap, overlay và metadata. Đây là triển khai ban đầu; E1–E3 chưa có số liệu benchmark.
 
+Baseline Kaggle GPU: train decoder trên PhraseCut train theo epoch + batch size, đánh giá trên miniv. Xem [source/README.md](source/README.md) và [notebook độc lập](source/baseline_clipseg_phrasecut_miniv.ipynb). Upload notebook lên Kaggle, bật GPU và Internet, đặt `EPOCHS`/`BATCH_SIZE` rồi Run All. Đặt `TRAIN_DECODER=False` nếu chỉ đánh giá checkpoint pretrained.
+
 ## Mã nguồn CLIPSeg gốc
 
 Repo tác giả [timojl/clipseg](https://github.com/timojl/clipseg) đã được clone vào [third_party/clipseg](third_party/clipseg), tại commit `77c4e2dc853880df46413d4a870a725e961f2f73`. Xem [hướng dẫn mã nguồn và chuẩn bị thực nghiệm](docs/clipseg-source.md) để tìm kiến trúc, notebook và cấu hình bài báo.

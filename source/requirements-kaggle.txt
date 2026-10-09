@@ -1,0 +1,4 @@
+# Giữ torch/CUDA, numpy, Pillow, scikit-learn, matplotlib sẵn có trên Kaggle.
+# Chỉ cài thêm hai dependency này trước khi import model.
+transformers==4.55.4
+gdown==5.2.0
