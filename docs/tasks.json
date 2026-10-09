@@ -1,0 +1,307 @@
+[
+  {
+    "id": "P00",
+    "title": "Chốt phạm vi 3 tuần và lập Trello",
+    "due_local": "2026-10-07T22:00:00+07:00",
+    "hours": 0.5,
+    "status": "done",
+    "description": "Đọc kế hoạch gốc; thống nhất bản 1 người với E1/E2/E3, báo cáo, demo, slide. Hoàn thành khi có lịch, tiêu chí nghiệm thu và bảng Trello.",
+    "sprint": 1,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn chốt phạm vi 3 tuần và lập trello để có phạm vi và backlog rõ để bắt đầu đồ án.",
+    "dependencies": [],
+    "acceptance_criteria": "Đọc kế hoạch gốc; thống nhất bản 1 người với E1/E2/E3, báo cáo, demo, slide. Hoàn thành khi có lịch, tiêu chí nghiệm thu và bảng Trello."
+  },
+  {
+    "id": "P01",
+    "title": "Đọc paper CLIPSeg và ghi chú 1 trang",
+    "due_local": "2026-10-08T22:00:00+07:00",
+    "hours": 3,
+    "status": "sprint_backlog",
+    "description": "Paper duy nhất cần đọc sâu: https://openaccess.thecvf.com/content/CVPR2022/papers/Luddecke_Image_Segmentation_Using_Text_and_Image_Prompts_CVPR_2022_paper.pdf\nĐọc Abstract + Figure 2, mục 3, visual prompt engineering và phần thực nghiệm. Trả lời 6 câu trong docs/paper-reading.md. Hoàn thành: tự giải thích ảnh + prompt → mask, FiLM, CLIP đóng băng và 2 hạn chế; viết ghi chú bằng lời của mình. Người đọc: bạn.",
+    "sprint": 1,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn đọc paper clipseg và ghi chú 1 trang để giải thích được nguyên lý CLIPSeg khi đọc code và bảo vệ.",
+    "dependencies": [],
+    "acceptance_criteria": "Paper duy nhất cần đọc sâu: https://openaccess.thecvf.com/content/CVPR2022/papers/Luddecke_Image_Segmentation_Using_Text_and_Image_Prompts_CVPR_2022_paper.pdf\nĐọc Abstract + Figure 2, mục 3, visual prompt engineering và phần thực nghiệm. Trả lời 6 câu trong docs/paper-reading.md. Hoàn thành: tự giải thích ảnh + prompt → mask, FiLM, CLIP đóng băng và 2 hạn chế; viết ghi chú bằng lời của mình. Người đọc: bạn."
+  },
+  {
+    "id": "P02",
+    "title": "Dựng môi trường và chạy inference đầu tiên",
+    "due_local": "2026-10-08T22:00:00+07:00",
+    "hours": 2,
+    "status": "done",
+    "description": "Cài môi trường riêng; chạy ảnh thật với 2 text prompt và 1 ảnh mẫu; lưu probability, mask, overlay, metadata phiên bản và checkpoint. Hoàn thành khi cả hai chế độ chạy được; ảnh demo không được coi là số liệu benchmark.",
+    "sprint": 1,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn dựng môi trường và chạy inference đầu tiên để chạy được text/visual inference để kiểm tra tính khả thi.",
+    "dependencies": [],
+    "acceptance_criteria": "Cài môi trường riêng; chạy ảnh thật với 2 text prompt và 1 ảnh mẫu; lưu probability, mask, overlay, metadata phiên bản và checkpoint. Hoàn thành khi cả hai chế độ chạy được; ảnh demo không được coi là số liệu benchmark."
+  },
+  {
+    "id": "P03",
+    "title": "Chuẩn bị PhraseCut miniv và kiểm tra mask",
+    "due_local": "2026-10-10T22:00:00+07:00",
+    "hours": 4,
+    "status": "sprint_backlog",
+    "description": "Sau P02. Dùng nguồn chính thức https://github.com/ChenyunWu/PhraseCutDataset; tải miniv, chuyển polygon sang binary mask. Chọn tối đa 200 query, seed=42; split theo image_id: calibration khoảng 20%, evaluation khoảng 80%. Lưu manifest + nguồn + checksum. Xem 10 overlay GT để phát hiện lệch tọa độ. Nếu tải lỗi quá 2 giờ: dùng tập nhỏ có GT được kiểm chứng, ghi rõ tên/split và điều chỉnh benchmark.",
+    "sprint": 1,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn chuẩn bị phrasecut miniv và kiểm tra mask để có dữ liệu và GT đúng để số đo đáng tin cậy.",
+    "dependencies": [
+      "P02"
+    ],
+    "acceptance_criteria": "Sau P02. Dùng nguồn chính thức https://github.com/ChenyunWu/PhraseCutDataset; tải miniv, chuyển polygon sang binary mask. Chọn tối đa 200 query, seed=42; split theo image_id: calibration khoảng 20%, evaluation khoảng 80%. Lưu manifest + nguồn + checksum. Xem 10 overlay GT để phát hiện lệch tọa độ. Nếu tải lỗi quá 2 giờ: dùng tập nhỏ có GT được kiểm chứng, ghi rõ tên/split và điều chỉnh benchmark."
+  },
+  {
+    "id": "P04",
+    "title": "Chốt protocol và kiểm tra metric",
+    "due_local": "2026-10-10T22:00:00+07:00",
+    "hours": 2,
+    "status": "sprint_backlog",
+    "description": "Sau P03. Khóa manifest, split theo ảnh, threshold mặc định 0.3; ngưỡng chọn chỉ trên calibration. Kiểm tra metric bằng ví dụ tính tay. Ghi mean IoU theo query, cumulative IoU và AP theo query; không gọi là class mIoU/PASCAL-5i. Không min-max probability; upsample logits trước sigmoid.",
+    "sprint": 1,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn chốt protocol và kiểm tra metric để có protocol cố định để so sánh các biến thể công bằng.",
+    "dependencies": [
+      "P03"
+    ],
+    "acceptance_criteria": "Sau P03. Khóa manifest, split theo ảnh, threshold mặc định 0.3; ngưỡng chọn chỉ trên calibration. Kiểm tra metric bằng ví dụ tính tay. Ghi mean IoU theo query, cumulative IoU và AP theo query; không gọi là class mIoU/PASCAL-5i. Không min-max probability; upsample logits trước sigmoid."
+  },
+  {
+    "id": "P05",
+    "title": "E1: baseline text trên tập đánh giá nhỏ",
+    "due_local": "2026-10-12T22:00:00+07:00",
+    "hours": 3,
+    "status": "sprint_backlog",
+    "description": "Sau P04. Cache probability maps và ghi từng query; đo tại threshold=0.3; có thể quét 0.1–0.7 trên calibration rồi khóa ngưỡng. Hoàn thành: per_query.csv, summary.json, 6 hình định tính và cấu hình. Số bài gốc chỉ là tham chiếu khác protocol, không khẳng định tái lập chính xác.",
+    "sprint": 1,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e1: baseline text trên tập đánh giá nhỏ để có baseline và pipeline chạy lại được cho các thí nghiệm sau.",
+    "dependencies": [
+      "P04"
+    ],
+    "acceptance_criteria": "Sau P04. Cache probability maps và ghi từng query; đo tại threshold=0.3; có thể quét 0.1–0.7 trên calibration rồi khóa ngưỡng. Hoàn thành: per_query.csv, summary.json, 6 hình định tính và cấu hình. Số bài gốc chỉ là tham chiếu khác protocol, không khẳng định tái lập chính xác."
+  },
+  {
+    "id": "P06",
+    "title": "Viết nháp nền tảng và kiến trúc CLIPSeg",
+    "due_local": "2026-10-13T22:00:00+07:00",
+    "hours": 3,
+    "status": "sprint_backlog",
+    "description": "Sau P01. Viết 3–4 trang: bài toán, CLIP, FiLM, decoder và visual conditioning; vẽ sơ đồ tự giải thích. Kiểm tra extract_layers theo checkpoint config; không chép các khẳng định 'đầu tiên' trong kế hoạch gốc.",
+    "sprint": 1,
+    "priority": "P1",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn viết nháp nền tảng và kiến trúc clipseg để có phần kiến trúc đủ rõ để trình bày mô hình.",
+    "dependencies": [
+      "P01"
+    ],
+    "acceptance_criteria": "Sau P01. Viết 3–4 trang: bài toán, CLIP, FiLM, decoder và visual conditioning; vẽ sơ đồ tự giải thích. Kiểm tra extract_layers theo checkpoint config; không chép các khẳng định 'đầu tiên' trong kế hoạch gốc."
+  },
+  {
+    "id": "P07",
+    "title": "E2: text so với visual prompt",
+    "due_local": "2026-10-15T22:00:00+07:00",
+    "hours": 4,
+    "status": "product_backlog",
+    "description": "Sau P05. Chọn 30 query có ảnh support khác image_id cùng loại mục tiêu; không dùng GT query để tạo support. So sánh text, support crop, support làm tối nền với cùng query + ngưỡng đã khóa. Hoàn thành: bảng paired IoU và 6 hình; ghi rõ E2 là tập con tuyển chọn, không phải PASCAL-5i hay tái lập bảng visual prompt của paper.",
+    "sprint": 2,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e2: text so với visual prompt để biết khi nào text hoặc ảnh mẫu phù hợp hơn.",
+    "dependencies": [
+      "P05"
+    ],
+    "acceptance_criteria": "Sau P05. Chọn 30 query có ảnh support khác image_id cùng loại mục tiêu; không dùng GT query để tạo support. So sánh text, support crop, support làm tối nền với cùng query + ngưỡng đã khóa. Hoàn thành: bảng paired IoU và 6 hình; ghi rõ E2 là tập con tuyển chọn, không phải PASCAL-5i hay tái lập bảng visual prompt của paper."
+  },
+  {
+    "id": "P08",
+    "title": "E3: thử 4 cách viết prompt",
+    "due_local": "2026-10-17T22:00:00+07:00",
+    "hours": 4,
+    "status": "product_backlog",
+    "description": "Sau P05. Tối đa 100 query cố định: phrase gốc, 'a photo of {phrase}', 'the {phrase}', '{phrase} in the image'. So cùng ảnh/GT/ngưỡng; không sửa mục tiêu ngữ nghĩa; trung bình probability của 4 prompt là tùy chọn. Hoàn thành: bảng paired IoU/AP, hiệu ứng từng template, 6 ví dụ. Không chọn template từ evaluation để báo cáo như kết quả độc lập.",
+    "sprint": 2,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e3: thử 4 cách viết prompt để biết cách viết prompt ảnh hưởng tới chất lượng mask.",
+    "dependencies": [
+      "P05"
+    ],
+    "acceptance_criteria": "Sau P05. Tối đa 100 query cố định: phrase gốc, 'a photo of {phrase}', 'the {phrase}', '{phrase} in the image'. So cùng ảnh/GT/ngưỡng; không sửa mục tiêu ngữ nghĩa; trung bình probability của 4 prompt là tùy chọn. Hoàn thành: bảng paired IoU/AP, hiệu ứng từng template, 6 ví dụ. Không chọn template từ evaluation để báo cáo như kết quả độc lập."
+  },
+  {
+    "id": "P09",
+    "title": "Phân tích lỗi và chọn hình minh họa",
+    "due_local": "2026-10-18T22:00:00+07:00",
+    "hours": 3,
+    "status": "product_backlog",
+    "description": "Sau P07/P08. Chọn 12 trường hợp gồm thành công và thất bại; nhóm vật nhỏ, nhiều vật, thuộc tính, quan hệ. Hoàn thành: hình ảnh/GT/prediction/prompt, lời giải thích có căn cứ; không dựng số liệu.",
+    "sprint": 2,
+    "priority": "P1",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn phân tích lỗi và chọn hình minh họa để giải thích giới hạn mô hình bằng bằng chứng cụ thể.",
+    "dependencies": [
+      "P07",
+      "P08"
+    ],
+    "acceptance_criteria": "Sau P07/P08. Chọn 12 trường hợp gồm thành công và thất bại; nhóm vật nhỏ, nhiều vật, thuộc tính, quan hệ. Hoàn thành: hình ảnh/GT/prediction/prompt, lời giải thích có căn cứ; không dựng số liệu."
+  },
+  {
+    "id": "P10",
+    "title": "Viết dữ liệu, protocol và khảo sát gọn",
+    "due_local": "2026-10-19T22:00:00+07:00",
+    "hours": 3,
+    "status": "product_backlog",
+    "description": "Viết phần nguồn dữ liệu, split, ngưỡng, metric và giới hạn so sánh. Khảo sát gọn 5–6 phương pháp từ nguồn chính thức; chỉ CLIPSeg đọc sâu. Bảng có prompt, output, cách dùng VLM; ghi phân biệt số tự đo và số công bố.",
+    "sprint": 2,
+    "priority": "P1",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn viết dữ liệu, protocol và khảo sát gọn để người đọc hiểu nguồn dữ liệu, phương pháp liên quan và protocol.",
+    "dependencies": [
+      "P03",
+      "P04",
+      "P01"
+    ],
+    "acceptance_criteria": "Viết phần nguồn dữ liệu, split, ngưỡng, metric và giới hạn so sánh. Khảo sát gọn 5–6 phương pháp từ nguồn chính thức; chỉ CLIPSeg đọc sâu. Bảng có prompt, output, cách dùng VLM; ghi phân biệt số tự đo và số công bố."
+  },
+  {
+    "id": "P11",
+    "title": "Chốt kết quả E1–E3",
+    "due_local": "2026-10-20T22:00:00+07:00",
+    "hours": 2,
+    "status": "product_backlog",
+    "description": "Sau P05/P07/P08/P09. Khóa số liệu, manifest, prompt và commit checkpoint. Hoàn thành: bảng kết quả thống nhất có N/split/threshold, log đầy đủ; không thêm mô hình sau ngày 20/10.\nBổ sung bảng E1–E3 và hình vào LaTeX để có báo cáo nháp đọc được ở Sprint Review 2; ghi phần còn thiếu.",
+    "sprint": 2,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn chốt kết quả e1–e3 để có bộ kết quả thống nhất và báo cáo nháp để review.",
+    "dependencies": [
+      "P05",
+      "P07",
+      "P08",
+      "P09",
+      "P10"
+    ],
+    "acceptance_criteria": "Sau P05/P07/P08/P09. Khóa số liệu, manifest, prompt và commit checkpoint. Hoàn thành: bảng kết quả thống nhất có N/split/threshold, log đầy đủ; không thêm mô hình sau ngày 20/10.\nBổ sung bảng E1–E3 và hình vào LaTeX để có báo cáo nháp đọc được ở Sprint Review 2; ghi phần còn thiếu."
+  },
+  {
+    "id": "P12",
+    "title": "Làm demo text và ảnh mẫu",
+    "due_local": "2026-10-20T22:00:00+07:00",
+    "hours": 4,
+    "status": "product_backlog",
+    "description": "Sau P02. Demo local hoặc Colab: ảnh query, text/ảnh support, threshold, heatmap và overlay. Quay video 60–90 giây dự phòng. Hoàn thành: thử ít nhất 3 ảnh với cả hai chế độ; không bắt buộc host public.",
+    "sprint": 2,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn làm demo text và ảnh mẫu để người xem thử được text/visual prompt trong demo.",
+    "dependencies": [
+      "P02"
+    ],
+    "acceptance_criteria": "Sau P02. Demo local hoặc Colab: ảnh query, text/ảnh support, threshold, heatmap và overlay. Quay video 60–90 giây dự phòng. Hoàn thành: thử ít nhất 3 ảnh với cả hai chế độ; không bắt buộc host public."
+  },
+  {
+    "id": "P13",
+    "title": "Hoàn thiện báo cáo",
+    "due_local": "2026-10-23T22:00:00+07:00",
+    "hours": 8,
+    "status": "product_backlog",
+    "description": "Sau P06/P10/P11. Mục tiêu 15–20 trang nếu môn không có mẫu riêng: giới thiệu; nền tảng; CLIPSeg; khảo sát gọn; dữ liệu/protocol; E1–E3; lỗi/demo; kết luận. Hoàn thành: PDF đọc được, mọi con số có nguồn/log, trích dẫn và hạn chế đúng.\nTách thành hai lượt tối đa 4 giờ: hoàn thiện nội dung và đối chiếu số liệu; sau đó biên dịch PDF, kiểm tra trích dẫn/hình/bảng.",
+    "sprint": 3,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn hoàn thiện báo cáo để người chấm đọc được báo cáo có nguồn và bằng chứng.",
+    "dependencies": [
+      "P06",
+      "P10",
+      "P11"
+    ],
+    "acceptance_criteria": "Sau P06/P10/P11. Mục tiêu 15–20 trang nếu môn không có mẫu riêng: giới thiệu; nền tảng; CLIPSeg; khảo sát gọn; dữ liệu/protocol; E1–E3; lỗi/demo; kết luận. Hoàn thành: PDF đọc được, mọi con số có nguồn/log, trích dẫn và hạn chế đúng.\nTách thành hai lượt tối đa 4 giờ: hoàn thiện nội dung và đối chiếu số liệu; sau đó biên dịch PDF, kiểm tra trích dẫn/hình/bảng."
+  },
+  {
+    "id": "P14",
+    "title": "Làm slide và chuẩn bị câu hỏi bảo vệ",
+    "due_local": "2026-10-24T22:00:00+07:00",
+    "hours": 4,
+    "status": "product_backlog",
+    "description": "Sau P13. 12–15 slide cho 10–12 phút; tập trung kiến trúc, 3 bảng thực nghiệm, lỗi, demo và giới hạn. Chuẩn bị đáp án: vì sao CLIPSeg, có training không, threshold, khác bài gốc, visual prompt có rò GT không.",
+    "sprint": 3,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn làm slide và chuẩn bị câu hỏi bảo vệ để trình bày đồ án rõ trong 10–12 phút.",
+    "dependencies": [
+      "P13"
+    ],
+    "acceptance_criteria": "Sau P13. 12–15 slide cho 10–12 phút; tập trung kiến trúc, 3 bảng thực nghiệm, lỗi, demo và giới hạn. Chuẩn bị đáp án: vì sao CLIPSeg, có training không, threshold, khác bài gốc, visual prompt có rò GT không."
+  },
+  {
+    "id": "P15",
+    "title": "Tập trình bày và thử demo offline",
+    "due_local": "2026-10-25T22:00:00+07:00",
+    "hours": 2,
+    "status": "product_backlog",
+    "description": "Sau P12/P14. Tập 2 lượt có bấm giờ; kiểm tra video khi thiếu mạng/GPU. Hoàn thành: trình bày trong thời lượng, nói rõ phần tự làm, trả lời 5 câu chính.",
+    "sprint": 3,
+    "priority": "P1",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn tập trình bày và thử demo offline để bảo vệ và demo được khi thiếu mạng.",
+    "dependencies": [
+      "P12",
+      "P14"
+    ],
+    "acceptance_criteria": "Sau P12/P14. Tập 2 lượt có bấm giờ; kiểm tra video khi thiếu mạng/GPU. Hoàn thành: trình bày trong thời lượng, nói rõ phần tự làm, trả lời 5 câu chính."
+  },
+  {
+    "id": "P16",
+    "title": "Đóng gói và chạy lại từ README",
+    "due_local": "2026-10-26T22:00:00+07:00",
+    "hours": 2,
+    "status": "product_backlog",
+    "description": "Sau P13/P15. Kiểm tra môi trường, requirements lock, lệnh chạy, nguồn dữ liệu và output mẫu; chạy lại một query. Hoàn thành: repo/code, báo cáo, slide, video và README đủ để người khác hiểu và chạy.",
+    "sprint": 3,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn đóng gói và chạy lại từ readme để người khác hiểu và chạy lại đồ án từ gói bàn giao.",
+    "dependencies": [
+      "P13",
+      "P14",
+      "P15"
+    ],
+    "acceptance_criteria": "Sau P13/P15. Kiểm tra môi trường, requirements lock, lệnh chạy, nguồn dữ liệu và output mẫu; chạy lại một query. Hoàn thành: repo/code, báo cáo, slide, video và README đủ để người khác hiểu và chạy."
+  },
+  {
+    "id": "P17",
+    "title": "Kiểm tra gói nộp và chốt bàn giao",
+    "due_local": "2026-10-27T22:00:00+07:00",
+    "hours": 2,
+    "status": "product_backlog",
+    "description": "Sau P16. Kiểm tra có code/README, PDF báo cáo, PDF slide, video demo và log/config kết quả; mở các file trên máy thực tế và đối chiếu yêu cầu môn. Ghi danh sách file/phiên bản bàn giao. Không mở thí nghiệm mới. Ngày 27/10/2026 là mốc kế hoạch, chưa phải deadline môn đã xác nhận.",
+    "sprint": 3,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn kiểm tra gói nộp để bảo đảm đủ file và mở được.",
+    "dependencies": [
+      "P16"
+    ],
+    "acceptance_criteria": "Sau P16. Kiểm tra có code/README, PDF báo cáo, PDF slide, video demo và log/config kết quả; mở các file trên máy thực tế và đối chiếu yêu cầu môn. Ghi danh sách file/phiên bản bàn giao. Không mở thí nghiệm mới. Ngày 27/10/2026 là mốc kế hoạch, chưa phải deadline môn đã xác nhận."
+  },
+  {
+    "id": "O01",
+    "title": "Tùy chọn: Grounding DINO + SAM 2",
+    "due_local": "2026-10-20T22:00:00+07:00",
+    "hours": 4,
+    "status": "product_backlog",
+    "description": "Chỉ chọn vào S2 nếu Goal E1–E3 + demo + báo cáo nháp đã đạt sớm trước Review 20/10, còn ít nhất 4h và GPU phù hợp. Chạy 30 ảnh; union mọi instance khớp prompt để so binary mask. Nếu cài đặt quá 2h thì dừng và ghi lý do; số công bố phải có nhãn nguồn. Không bắt buộc, không kéo sang S3.",
+    "sprint": null,
+    "priority": "P2",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn tùy chọn: grounding dino + sam 2 để có thêm đối chứng hiện đại khi phần bắt buộc đã ổn.",
+    "dependencies": [
+      "P11",
+      "P12"
+    ],
+    "acceptance_criteria": "Chỉ chọn vào S2 nếu Goal E1–E3 + demo + báo cáo nháp đã đạt sớm trước Review 20/10, còn ít nhất 4h và GPU phù hợp. Chạy 30 ảnh; union mọi instance khớp prompt để so binary mask. Nếu cài đặt quá 2h thì dừng và ghi lý do; số công bố phải có nhãn nguồn. Không bắt buộc, không kéo sang S3."
+  },
+  {
+    "id": "L01",
+    "title": "Bộ mẫu báo cáo và slide LaTeX",
+    "due_local": "2026-10-07T22:00:00+07:00",
+    "hours": 2,
+    "status": "done",
+    "sprint": 1,
+    "priority": "P0",
+    "user_story": "Là sinh viên, tôi muốn có mẫu LaTeX đúng format để viết báo cáo và slide ngay từ Sprint 1.",
+    "dependencies": [],
+    "description": "Đã tạo manuscript/main.tex, metadata dùng chung, 5 chương, slides/clipseg_slides.tex 15 slide và script build. Đã biên dịch và xem kiểm tra hai PDF trong output/pdf. Đây là mẫu, chưa phải nội dung báo cáo hoàn chỉnh.",
+    "acceptance_criteria": "Source LaTeX chỉnh sửa được, build bằng XeLaTeX/Biber, có PDF preview đã kiểm tra; metadata học kỳ cũ không bị mang sang."
+  }
+]

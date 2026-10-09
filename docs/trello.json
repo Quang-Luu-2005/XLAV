@@ -1,0 +1,233 @@
+{
+  "board": {
+    "id": "ari:cloud:trello::board/workspace/6a6de56c07c35fd307fd5df7/6ac60a448cee3e74111ce7ff",
+    "name": "Đồ án CLIPSeg • 1 người • 07–27.10.2026",
+    "url": "https://trello.com/b/85LHoRTG/%C4%91%E1%BB%93-%C3%A1n-clipseg-1-ng%C6%B0%E1%BB%9Di-07-27102026"
+  },
+  "process": "Scrum cho một người",
+  "current_sprint": 1,
+  "lists": [
+    {
+      "id": "ari:cloud:trello::list/workspace/6a6de56c07c35fd307fd5df7/6ac621b654949ab272f6110d",
+      "name": "Scrum • Mục tiêu và quy ước"
+    },
+    {
+      "id": "ari:cloud:trello::list/workspace/6a6de56c07c35fd307fd5df7/6ac60a575efbba649eac9fec",
+      "name": "Product Backlog • S2/S3 dự kiến"
+    },
+    {
+      "id": "ari:cloud:trello::list/workspace/6a6de56c07c35fd307fd5df7/6ac60a56a4115e14b7a8b304",
+      "name": "Sprint Backlog • S1 07–13/10"
+    },
+    {
+      "id": "ari:cloud:trello::list/workspace/6a6de56c07c35fd307fd5df7/6ac60a5a1b2d057a030897ea",
+      "name": "In Progress • WIP 1"
+    },
+    {
+      "id": "ari:cloud:trello::list/workspace/6a6de56c07c35fd307fd5df7/6ac60a5906f331f807cfb449",
+      "name": "Review / Test"
+    },
+    {
+      "id": "ari:cloud:trello::list/workspace/6a6de56c07c35fd307fd5df7/6ac60a5e20d6f4ba2f22bda9",
+      "name": "Blocked"
+    },
+    {
+      "id": "ari:cloud:trello::list/workspace/6a6de56c07c35fd307fd5df7/6ac60a5cd8856e846d96b4fd",
+      "name": "Done"
+    }
+  ],
+  "cards": [
+    {
+      "taskId": "SCRUM",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac6229a8c543fed4a518a9d",
+      "name": "[Scrum] Product Goal và quy tắc làm việc",
+      "url": "https://trello.com/c/oPQXmVKe",
+      "list": "Scrum • Mục tiêu và quy ước",
+      "complete": false
+    },
+    {
+      "taskId": "SPRINT1",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac6229c886b0ee3b9af4885",
+      "name": "[S1] Sprint Goal • Baseline chạy lại được • 07–13/10",
+      "url": "https://trello.com/c/GW3ZZ0hP",
+      "list": "Scrum • Mục tiêu và quy ước",
+      "complete": false
+    },
+    {
+      "taskId": "SPRINT2",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac6229e8c543fed4a519027",
+      "name": "[S2 dự kiến] E1–E3 + demo + báo cáo nháp • 14–20/10",
+      "url": "https://trello.com/c/ZGrToIHi",
+      "list": "Scrum • Mục tiêu và quy ước",
+      "complete": false
+    },
+    {
+      "taskId": "SPRINT3",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac622a02d6ba36395ab022f",
+      "name": "[S3 dự kiến] Gói bàn giao hoàn chỉnh • 21–27/10",
+      "url": "https://trello.com/c/2CBIj1Fc",
+      "list": "Scrum • Mục tiêu và quy ước",
+      "complete": false
+    },
+    {
+      "taskId": "P07",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b080da4e3a4cf46b144",
+      "name": "[S2][P0][P07] E2: text so với visual prompt • 4h",
+      "url": "https://trello.com/c/VSPMiLyH",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P08",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b0a7cc97428df240f0c",
+      "name": "[S2][P0][P08] E3: thử 4 cách viết prompt • 4h",
+      "url": "https://trello.com/c/Kw6ax0TG",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P09",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b0cb495ec14010a03ba",
+      "name": "[S2][P1][P09] Phân tích lỗi và chọn hình minh họa • 3h",
+      "url": "https://trello.com/c/gDxkXjlJ",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P10",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b6267d6795818f37e4f",
+      "name": "[S2][P1][P10] Viết dữ liệu, protocol và khảo sát gọn • 3h",
+      "url": "https://trello.com/c/2SY1q2aS",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P11",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b6465b0be1e772498a1",
+      "name": "[S2][P0][P11] Chốt kết quả E1–E3 • 2h",
+      "url": "https://trello.com/c/P8qjb5vH",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P12",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b66da222d3337408b0c",
+      "name": "[S2][P0][P12] Làm demo text và ảnh mẫu • 4h",
+      "url": "https://trello.com/c/e0BaAbKp",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P13",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b68a61ec6f4fc42862f",
+      "name": "[S3][P0][P13] Hoàn thiện báo cáo • 8h",
+      "url": "https://trello.com/c/G0P8lpHU",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P14",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b6a59b67b345e3f4399",
+      "name": "[S3][P0][P14] Làm slide và chuẩn bị câu hỏi bảo vệ • 4h",
+      "url": "https://trello.com/c/jmRyT4tr",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P15",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b6b30488ae318db7d21",
+      "name": "[S3][P1][P15] Tập trình bày và thử demo offline • 2h",
+      "url": "https://trello.com/c/m0nNTAXf",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P16",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b6d282f90c2f058f511",
+      "name": "[S3][P0][P16] Đóng gói và chạy lại từ README • 2h",
+      "url": "https://trello.com/c/2Tq8fciW",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P17",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b6fd702d422cdd44789",
+      "name": "[S3][P0][P17] Kiểm tra gói nộp và chốt bàn giao • 2h",
+      "url": "https://trello.com/c/H95n1hDw",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "O01",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b70c5f97d8846751014",
+      "name": "[Optional][P2][O01] Tùy chọn: Grounding DINO + SAM 2 • 4h",
+      "url": "https://trello.com/c/6zqZm0P1",
+      "list": "Product Backlog • S2/S3 dự kiến",
+      "complete": false
+    },
+    {
+      "taskId": "P01",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60afd1b95b7fdc14abe51",
+      "name": "[S1][P0][P01] Đọc paper CLIPSeg và ghi chú 1 trang • 3h",
+      "url": "https://trello.com/c/1Ta30fI3",
+      "list": "Sprint Backlog • S1 07–13/10",
+      "complete": false
+    },
+    {
+      "taskId": "P03",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b0167862e308c6aa60c",
+      "name": "[S1][P0][P03] Chuẩn bị PhraseCut miniv và kiểm tra mask • 4h",
+      "url": "https://trello.com/c/LL3Anca0",
+      "list": "Sprint Backlog • S1 07–13/10",
+      "complete": false
+    },
+    {
+      "taskId": "P04",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b039d4ea8be99b53c5e",
+      "name": "[S1][P0][P04] Chốt protocol và kiểm tra metric • 2h",
+      "url": "https://trello.com/c/5AXDehBd",
+      "list": "Sprint Backlog • S1 07–13/10",
+      "complete": false
+    },
+    {
+      "taskId": "P05",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b05db442000a654bbb4",
+      "name": "[S1][P0][P05] E1: baseline text trên tập đánh giá nhỏ • 3h",
+      "url": "https://trello.com/c/mEU7tsFG",
+      "list": "Sprint Backlog • S1 07–13/10",
+      "complete": false
+    },
+    {
+      "taskId": "P06",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60b066d01fc4412019c58",
+      "name": "[S1][P1][P06] Viết nháp nền tảng và kiến trúc CLIPSeg • 3h",
+      "url": "https://trello.com/c/ugyvb5P6",
+      "list": "Sprint Backlog • S1 07–13/10",
+      "complete": false
+    },
+    {
+      "taskId": "P00",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60afb45f7d4437691c216",
+      "name": "[S1][P0][P00] Chốt phạm vi 3 tuần và lập Trello • 0.5h",
+      "url": "https://trello.com/c/cFR5opn9",
+      "list": "Done",
+      "complete": true
+    },
+    {
+      "taskId": "P02",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac60affbcc9e688533a836c",
+      "name": "[S1][P0][P02] Dựng môi trường và chạy inference đầu tiên • 2h",
+      "url": "https://trello.com/c/yKsupW9k",
+      "list": "Done",
+      "complete": true
+    },
+    {
+      "taskId": "L01",
+      "id": "ari:cloud:trello::card/workspace/6a6de56c07c35fd307fd5df7/6ac62227a6223ee370a3896a",
+      "name": "[S1][P0][L01] Bộ mẫu báo cáo và slide LaTeX • 2h",
+      "url": "https://trello.com/c/cti1fblT",
+      "list": "Done",
+      "complete": true
+    }
+  ]
+}

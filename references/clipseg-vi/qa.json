@@ -1,0 +1,374 @@
+{
+  "source": "D:\\XLAV\\Project\\references\\CLIPSeg_CVPR2022.pdf",
+  "source_sha256": "f094d784ce867e0d0761a506c9cf7606348e695b19b24b917a03f8112af44d15",
+  "output": "D:\\XLAV\\Project\\output\\pdf\\clipseg-vietnamese\\CLIPSeg_CVPR2022-vi.pdf",
+  "output_sha256": "af747fd26a6ffe96e27568de3fd4bcd2ff25b098e2ed7701b9ef2f1f65bf8e3e",
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "visual_review": "completed: all 11 output pages inspected, figures/formulas/tables reviewed",
+  "pages": [
+    {
+      "page": 1,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": false,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "CMMI8",
+        "CMR6",
+        "CMR8",
+        "CMSY10",
+        "CMSY6",
+        "CMSY8",
+        "NimbusRomNo9L-Regu",
+        "Times-Italic",
+        "Times-Roman",
+        "TimesNewRomanPS-ItalicMT",
+        "TimesNewRomanPSMT"
+      ],
+      "font_sizes": [
+        5.98,
+        7.97,
+        8.72,
+        8.97,
+        9.0,
+        9.96,
+        11.96,
+        14.35
+      ],
+      "overlap_candidates": [
+        {
+          "first": "¨",
+          "second": "uddecke",
+          "intersection": [
+            233.17935180664062,
+            145.66432189941406,
+            237.16043090820312,
+            157.61952209472656
+          ]
+        },
+        {
+          "first": "¨",
+          "second": "ottingen ",
+          "intersection": [
+            235.33047485351562,
+            161.89395141601562,
+            238.3162841796875,
+            170.8603515625
+          ]
+        },
+        {
+          "first": "¨",
+          "second": "ottingen",
+          "intersection": [
+            411.2009582519531,
+            161.89395141601562,
+            414.186767578125,
+            170.8603515625
+          ]
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": false,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "MSAM10",
+        "NimbusRomNo9L-Regu",
+        "Times-Roman",
+        "TimesNewRomanPSMT"
+      ],
+      "font_sizes": [
+        7.97,
+        8.97,
+        8.99,
+        9.0,
+        9.96
+      ],
+      "overlap_candidates": []
+    },
+    {
+      "page": 3,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": false,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "CMBX10",
+        "CMMI10",
+        "CMMI5",
+        "CMMI7",
+        "CMR10",
+        "CMR7",
+        "CMSY10",
+        "CMSY7",
+        "MSBM10",
+        "NimbusRomNo9L-Medi",
+        "Times-Roman",
+        "TimesNewRomanPSMT"
+      ],
+      "font_sizes": [
+        4.98,
+        6.97,
+        9.0,
+        9.89,
+        9.96,
+        10.96
+      ],
+      "overlap_candidates": [
+        {
+          "first": " H",
+          "second": "P",
+          "intersection": [
+            469.75299072265625,
+            184.45095825195312,
+            474.11163330078125,
+            187.0322265625
+          ]
+        }
+      ]
+    },
+    {
+      "page": 4,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": false,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "CMBX10",
+        "CMBX7",
+        "CMMI10",
+        "CMMI7",
+        "CMMI9",
+        "CMR10",
+        "CMR7",
+        "CMSY10",
+        "CMSY9",
+        "DejaVuSans",
+        "NimbusRomNo9L-Regu",
+        "Times-Roman",
+        "TimesNewRomanPSMT"
+      ],
+      "font_sizes": [
+        2.6,
+        6.97,
+        8.97,
+        9.0,
+        9.96,
+        11.96
+      ],
+      "overlap_candidates": []
+    },
+    {
+      "page": 5,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": false,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "CMMI10",
+        "CMR8",
+        "CMSY10",
+        "NimbusRomNo9L-Medi",
+        "NimbusRomNo9L-Regu",
+        "Times-Italic",
+        "Times-Roman",
+        "TimesNewRomanPSMT"
+      ],
+      "font_sizes": [
+        6.97,
+        7.97,
+        8.97,
+        9.0,
+        9.96,
+        10.96,
+        11.96
+      ],
+      "overlap_candidates": []
+    },
+    {
+      "page": 6,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": false,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "CMMI10",
+        "CMMI6",
+        "CMMI8",
+        "CMMI9",
+        "CMR10",
+        "CMR8",
+        "NimbusRomNo9L-Medi",
+        "NimbusRomNo9L-Regu",
+        "Times-Roman",
+        "TimesNewRomanPSMT"
+      ],
+      "font_sizes": [
+        5.98,
+        7.97,
+        8.97,
+        9.0,
+        9.96,
+        10.96
+      ],
+      "overlap_candidates": []
+    },
+    {
+      "page": 7,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": false,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "CMMI8",
+        "CMMI9",
+        "NimbusRomNo9L-Medi",
+        "NimbusRomNo9L-Regu",
+        "Times-Roman",
+        "TimesNewRomanPSMT"
+      ],
+      "font_sizes": [
+        5.98,
+        6.39,
+        7.97,
+        8.97,
+        9.0,
+        9.96,
+        10.96
+      ],
+      "overlap_candidates": []
+    },
+    {
+      "page": 8,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": false,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "CMMI10",
+        "CMMI8",
+        "CMMI9",
+        "CMR10",
+        "CMR8",
+        "NimbusRomNo9L-Medi",
+        "NimbusRomNo9L-Regu",
+        "Times-Roman",
+        "TimesNewRomanPSMT"
+      ],
+      "font_sizes": [
+        7.97,
+        8.97,
+        9.0,
+        9.96,
+        11.96
+      ],
+      "overlap_candidates": []
+    },
+    {
+      "page": 9,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": true,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "NimbusMonL-Regu",
+        "NimbusRomNo9L-Medi",
+        "NimbusRomNo9L-Regu",
+        "NimbusRomNo9L-ReguItal",
+        "Times-Roman"
+      ],
+      "font_sizes": [
+        8.97,
+        9.0,
+        11.96
+      ],
+      "overlap_candidates": []
+    },
+    {
+      "page": 10,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": true,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "NimbusMonL-Regu",
+        "NimbusRomNo9L-Regu",
+        "NimbusRomNo9L-ReguItal",
+        "Times-Roman"
+      ],
+      "font_sizes": [
+        8.97,
+        9.0
+      ],
+      "overlap_candidates": []
+    },
+    {
+      "page": 11,
+      "selected": true,
+      "canvas_match": true,
+      "raster_identical": false,
+      "forbidden_markers": [],
+      "mojibake_lines": [],
+      "out_of_canvas": [],
+      "fonts": [
+        "NimbusMonL-Regu",
+        "Times-Italic",
+        "Times-Roman",
+        "TimesNewRomanPSMT"
+      ],
+      "font_sizes": [
+        8.97,
+        9.0
+      ],
+      "overlap_candidates": []
+    }
+  ],
+  "page_count_match": true,
+  "source_page_count": 11,
+  "output_page_count": 11,
+  "structural_gate": true,
+  "note": "Structural checks do not measure translation coverage or visual overlap.",
+  "translations_sha256": "9eecd3a646af92576045cb0a4be042a1bfdddeb2048b000aaf9f4002065012c2",
+  "preserved_english_regions": [
+    "references pp.9-11",
+    "figure labels",
+    "protected table labels",
+    "CVF notice"
+  ],
+  "overlap_review": "page 1 umlaut accent glyphs, page 3 fraction: intentional"
+}

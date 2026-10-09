@@ -1,0 +1,17 @@
+\chapter{Giới thiệu}
+\section{Bối cảnh và động lực}
+[Giới thiệu phân đoạn theo prompt và nhu cầu xác định vùng ảnh từ văn bản hoặc ảnh mẫu. Dẫn nguồn cho các nhận định về phương pháp.]
+
+\section{Phát biểu bài toán}
+Với ảnh truy vấn $x$ và prompt $q$, mô hình dự đoán mặt nạ nhị phân $\hat{y}=f(x,q)$. Prompt có thể là văn bản hoặc ảnh support. Ground truth $y$ chỉ dùng cho đánh giá trong các thí nghiệm inference của đồ án.
+
+\section{Mục tiêu và phạm vi}
+\begin{itemize}
+\item Khảo sát sâu CLIPSeg~\cite{luddecke2022clipseg} và triển khai checkpoint có sẵn.
+\item E1: đánh giá baseline text trên tập nhỏ.
+\item E2: so sánh text với visual prompt.
+\item E3: khảo sát ảnh hưởng của cách viết prompt.
+\end{itemize}
+
+\section{Đóng góp và cấu trúc báo cáo}
+[Mô tả phần thực hiện thực tế: code, protocol, bảng kết quả và phân tích lỗi. Chỉ viết đóng góp đã hoàn thành; không tuyên bố ``kết quả đầu tiên'' khi chưa kiểm chứng.]

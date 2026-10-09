@@ -1,0 +1,16 @@
+\chapter{Phương pháp CLIPSeg}
+\section{Tổng quan kiến trúc}
+[Vẽ hoặc chèn sơ đồ từ bài báo có dẫn nguồn: backbone CLIP, vector điều kiện và decoder.]
+\labfigure[0.75\textwidth]{figures/clipseg_architecture.pdf}{Sơ đồ CLIPSeg. Bổ sung hình và ghi rõ nguồn hoặc ghi ``sinh viên vẽ lại theo bài báo''.}{fig:architecture}
+
+\section{Mã hóa ảnh và prompt}
+[Giải thích đặc trưng đa mức của ảnh query; embedding text và embedding visual support. Đối chiếu cấu hình checkpoint với biến thể bài báo.]
+
+\section{Conditioning bằng FiLM và decoder}
+[Giải thích phép điều biến theo đặc trưng, vai trò decoder và cách chuyển token thành logits. Viết công thức và giải nghĩa từng biến.]
+
+\section{Text prompt và visual prompt}
+[Mô tả chuẩn bị support, crop hoặc giảm ảnh hưởng nền; phân biệt ảnh support khác query trong E2 với crop cùng ảnh chỉ dùng cho demo.]
+
+\section{Suy luận và hậu xử lý}
+Trong triển khai của đồ án, logits được nội suy bilinear về kích thước ảnh gốc trước khi áp dụng sigmoid. Xác suất được đặt ngưỡng để tạo mask nhị phân. Không min--max normalize khi tính metric.
