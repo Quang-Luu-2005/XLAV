@@ -11,8 +11,8 @@ from PIL import Image
 
 SOURCE = Path(__file__).resolve().parents[1] / "source"
 NOTEBOOKS = {
-    "e2": SOURCE / "e2_text_vs_visual_phrasecut_miniv.ipynb",
-    "e3": SOURCE / "e3_prompt_templates_phrasecut_miniv.ipynb",
+    "e2": SOURCE / "e2_text_vs_visual.ipynb",
+    "e3": SOURCE / "e3_prompt_templates.ipynb",
 }
 
 

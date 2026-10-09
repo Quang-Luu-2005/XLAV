@@ -999,7 +999,7 @@ notebook = {
                  "language_info": {"name": "python", "version": "3.11"}},
     "nbformat": 4, "nbformat_minor": 5,
 }
-output = Path(__file__).resolve().parents[1] / "source" / "baseline_clipseg_phrasecut_miniv.ipynb"
+output = Path(__file__).resolve().parents[1] / "source" / "e1_train_eval_phrasecut.ipynb"
 output.parent.mkdir(exist_ok=True)
 output.write_bytes((json.dumps(notebook, ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
 print(output)

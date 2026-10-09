@@ -1,6 +1,6 @@
 # Baseline CLIPSeg — PhraseCut miniv trên Kaggle GPU
 
-File chạy chính: [baseline_clipseg_phrasecut_miniv.ipynb](baseline_clipseg_phrasecut_miniv.ipynb). Notebook tự chứa code; upload **một file `.ipynb`** là đủ, không cần clone repo XLAV hoặc submodule CLIPSeg. **E1** tái tạo quá trình train CLIPSeg: `TRAIN_DECODER=True` train decoder theo **epoch + batch size** trên **PhraseCut+**, tạo ngẫu nhiên từ PhraseCut `train` (text + ảnh support, mẫu âm, augmentation) như tác giả, rồi đánh giá trên `miniv`. Mặc định `TRAIN_DECODER=False` chỉ đánh giá checkpoint pretrained của tác giả, dùng làm mốc tham chiếu.
+File chạy chính: [e1_train_eval_phrasecut.ipynb](e1_train_eval_phrasecut.ipynb). Notebook tự chứa code; upload **một file `.ipynb`** là đủ, không cần clone repo XLAV hoặc submodule CLIPSeg. **E1** tái tạo quá trình train CLIPSeg: `TRAIN_DECODER=True` train decoder theo **epoch + batch size** trên **PhraseCut+**, tạo ngẫu nhiên từ PhraseCut `train` (text + ảnh support, mẫu âm, augmentation) như tác giả, rồi đánh giá trên `miniv`. Mặc định `TRAIN_DECODER=False` chỉ đánh giá checkpoint pretrained của tác giả, dùng làm mốc tham chiếu.
 
 ## Chạy trên Kaggle
 
@@ -109,7 +109,7 @@ Các file kết quả kiểm tra ở `outputs/baseline-notebook-check/` và `out
 
 Hai notebook riêng, cùng cách chạy trên Kaggle như E1 (upload một file `.ipynb`, GPU T4 x2, bật Internet, Run All). Phần tải dữ liệu, tải ảnh, model, rasterize GT và metric được chép từ notebook E1 bằng [`scripts/build_experiment_notebooks.py`](../scripts/build_experiment_notebooks.py), nên ba thí nghiệm dùng chung protocol. Notebook E1 cũng được sinh từ [`scripts/build_baseline_notebook.py`](../scripts/build_baseline_notebook.py). Sửa E1 trong script đó, rồi chạy lại cả hai script theo thứ tự E1 → E2/E3. Không sửa tay các file `.ipynb`.
 
-| | [E2: text và visual prompt](e2_text_vs_visual_phrasecut_miniv.ipynb) | [E3: template câu](e3_prompt_templates_phrasecut_miniv.ipynb) |
+| | [E2: text và visual prompt](e2_text_vs_visual.ipynb) | [E3: template câu](e3_prompt_templates.ipynb) |
 |---|---|---|
 | Query | 30 query miniv có ít nhất 3 ảnh support hợp lệ (seed 42) | 100 query miniv (seed 42, cách chọn giống E1) |
 | Biến thể | `text_phrase` (gốc), `text_name`, `visual_crop`, `visual_dark`, `visual_crop_dark` | `{phrase}` (gốc), `a photo of {phrase}`, `the {phrase}`, `{phrase} in the image` |

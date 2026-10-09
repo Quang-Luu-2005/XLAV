@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 
-NOTEBOOK = Path(__file__).resolve().parents[1] / "source" / "baseline_clipseg_phrasecut_miniv.ipynb"
+NOTEBOOK = Path(__file__).resolve().parents[1] / "source" / "e1_train_eval_phrasecut.ipynb"
 
 
 def notebook_functions():

@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "source"
-E1 = json.loads((SOURCE / "baseline_clipseg_phrasecut_miniv.ipynb").read_text(encoding="utf-8"))
+E1 = json.loads((SOURCE / "e1_train_eval_phrasecut.ipynb").read_text(encoding="utf-8"))
 E1_CELLS = {cell["id"]: cell["source"] for cell in E1["cells"]}
 
 
@@ -801,7 +801,7 @@ e2 = notebook([
     ("markdown", SOURCES_MD),
 ])
 
-for name, value in [("e2_text_vs_visual_phrasecut_miniv.ipynb", e2), ("e3_prompt_templates_phrasecut_miniv.ipynb", e3)]:
+for name, value in [("e2_text_vs_visual.ipynb", e2), ("e3_prompt_templates.ipynb", e3)]:
     path = SOURCE / name
     path.write_text(json.dumps(value, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(path)

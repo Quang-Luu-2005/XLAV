@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 
 
-NOTEBOOK = Path(__file__).resolve().parents[1] / "source" / "baseline_clipseg_phrasecut_miniv.ipynb"
+NOTEBOOK = Path(__file__).resolve().parents[1] / "source" / "e1_train_eval_phrasecut.ipynb"
 NAMES = {"random_square_crop", "gaussian_blur", "visual_prompt", "mix_conditionals"}
 
 
