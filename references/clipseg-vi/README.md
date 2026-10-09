@@ -3,7 +3,7 @@
 Paper: Timo Lüddecke và Alexander Ecker, *Image Segmentation Using Text and Image Prompts*, CVPR 2022.
 
 - Nguồn: `../CLIPSeg_CVPR2022.pdf`.
-- [PDF tiếng Việt](../../output/pdf/clipseg-vietnamese/CLIPSeg_CVPR2022-vi.pdf).
+- [PDF tiếng Việt](CLIPSeg_CVPR2022-vi.pdf).
 - Công cụ: [`pdf-translate`](D:/KLTN/VI-Translate/SKILL.md), core đi kèm phiên bản `1.9.11`, ruleset `code4life-preservation-v1`.
 - Chế độ: handoff; Codex trực tiếp dịch các đoạn, công cụ ghép lại PDF. Không gửi văn bản sang Google Translate. Không cần OCR.
 - Ngày tạo: 07/10/2026. Đây là bản dịch hỗ trợ đọc, không phải bản dịch chính thức của tác giả.

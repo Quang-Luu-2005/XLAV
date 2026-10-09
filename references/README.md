@@ -8,6 +8,6 @@ Bản tải về tại `CLIPSeg_CVPR2022.pdf` (không đưa file PDF vào Git). 
 
 Code tác giả: https://github.com/timojl/clipseg
 
-Bản dịch tiếng Việt: [PDF](../output/pdf/clipseg-vietnamese/CLIPSeg_CVPR2022-vi.pdf). [Phạm vi dịch, thuật ngữ và cách tái tạo](clipseg-vi/README.md).
+Bản dịch tiếng Việt: [PDF](clipseg-vi/CLIPSeg_CVPR2022-vi.pdf). [Phạm vi dịch, thuật ngữ và cách tái tạo](clipseg-vi/README.md).
 
 Checkpoint và cấu hình triển khai: https://huggingface.co/CIDAS/clipseg-rd64-refined

@@ -1,7 +1,7 @@
 {
   "source": "D:\\XLAV\\Project\\references\\CLIPSeg_CVPR2022.pdf",
   "source_sha256": "f094d784ce867e0d0761a506c9cf7606348e695b19b24b917a03f8112af44d15",
-  "output": "D:\\XLAV\\Project\\output\\pdf\\clipseg-vietnamese\\CLIPSeg_CVPR2022-vi.pdf",
+  "output": "D:\\XLAV\\Project\\references\\clipseg-vi\\CLIPSeg_CVPR2022-vi.pdf",
   "output_sha256": "af747fd26a6ffe96e27568de3fd4bcd2ff25b098e2ed7701b9ef2f1f65bf8e3e",
   "selected_pages": [
     1,
@@ -370,5 +370,6 @@
     "protected table labels",
     "CVF notice"
   ],
-  "overlap_review": "page 1 umlaut accent glyphs, page 3 fraction: intentional"
+  "overlap_review": "page 1 umlaut accent glyphs, page 3 fraction: intentional",
+  "relocated_on": "2026-10-10"
 }

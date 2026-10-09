@@ -30,3 +30,8 @@ Phần 07/10 phía trên là lịch sử khởi tạo. Phạm vi hiện tại th
 Đã cập nhật [Trello](https://trello.com/b/85LHoRTG): 18 thẻ sửa, 6 thẻ thêm (P18 review PR, P19 pilot GPU, P20 E1b, P21 code E4, P22 B1/E4a, O02 E4b), tổng 30 thẻ. Đã đọc lại xác nhận tên/mô tả/hạn và vị trí. P01 giữ Done theo bạn cập nhật; P03 là In Progress duy nhất; P04/P18 Review / Test. Đồng bộ tasks/trello JSON, backlog và hướng dẫn Scrum. Công bắt buộc 71,5h, Done 7,5h, còn 64h ước lượng; đây không phải thời gian thực tế.
 
 Ba notebook E1/E2/E3 và script sinh đã có. Chạy lại 16 test: tất cả qua. Log E1/E2/E3 hiện tại là CPU smoke; chưa có benchmark Kaggle GPU. [PR #1](https://github.com/Quang-Luu-2005/XLAV/pull/1) OPEN, chưa merge; E4 mới có nghiên cứu. Bước tiếp theo là input Kaggle/GT và review PR, sau đó pilot P19 để xác nhận VRAM/thời gian/ngân sách E1/E1b/E4 trước khi train full.
+## Dọn workspace — 10/10/2026
+
+Đã chuyển file tạm, cache Python, notebook đã chạy, 5 ZIP trùng kết quả giải nén, output kiểm tra đóng gói và build/render LaTeX sang `D:\XLAV\Project-cleanup-2026-10-10` để có thể khôi phục. Script `prepare_latex_templates.py` dùng một lần đã được đưa ra khỏi repo; mẫu LaTeX hoàn chỉnh và `build_latex.ps1` vẫn được giữ.
+
+Gom PDF tiếng Việt về `references/clipseg-vi/CLIPSeg_CVPR2022-vi.pdf`, SHA-256 không đổi; cập nhật liên kết và QA. Bản sao trong output được chuyển ra ngoài repo. Giữ code/notebook E1–E3, test, dataset train/miniv, checkpoint/log/metric kiểm tra, bản PDF bàn giao, ghi chú nghiên cứu E4, môi trường và submodule CLIPSeg.
