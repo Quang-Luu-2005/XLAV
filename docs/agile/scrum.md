@@ -4,7 +4,7 @@
 
 ## Product Goal
 
-Đến cuối ngày 27/10 có đồ án CLIPSeg chạy lại được: inference text/visual, ba thí nghiệm E1–E3 với protocol và bằng chứng, demo, báo cáo LaTeX, 15 slide và video dự phòng. Số liệu tự đo được phân biệt với số bài báo. Ngày 27 là mốc kế hoạch, chưa phải deadline môn đã xác nhận.
+Đến cuối ngày 27/10 có đồ án CLIPSeg chạy lại được: train decoder E1 PhraseCut+, E1b text-only, E2/E3 trên decoder E1 và E4a có đối chứng B1 cùng ngân sách, inference text/visual với protocol và bằng chứng, demo, báo cáo LaTeX, 15 slide và video dự phòng. Số liệu tự đo được phân biệt với số bài báo. Ngày 27 là mốc kế hoạch, chưa phải deadline môn đã xác nhận.
 
 ## Vai trò của bạn
 
@@ -20,8 +20,8 @@ Codex hỗ trợ theo yêu cầu trong phiên làm việc. Không mặc định 
 
 | Sprint | Thời gian | Sprint Goal | Increment để review |
 |---|---|---|---|
-| S1 | 07–13/10 | Có baseline CLIPSeg kiểm chứng và giải thích được | CLI text/visual, dữ liệu/manifest sạch, protocol, E1, nháp nền tảng/kiến trúc và mẫu LaTeX |
-| S2 | 14–20/10 | Có bằng chứng trả lời hai câu hỏi về visual prompt và cách viết text | E1–E3 đã khóa, 12 hình phân tích lỗi, demo text/visual, báo cáo nháp có bảng kết quả |
+| S1 | 07–13/10 | Dữ liệu, pilot GPU và bắt đầu train E1 | Train/miniv trên Kaggle, protocol, review PR #1, log pilot CUDA, mốc pretrained, nháp kiến trúc và mẫu LaTeX; E1 hoàn tất dự kiến 14/10 |
+| S2 | 14–20/10 | E1/E1b, E2–E4 và khóa số liệu | E1/E1b, E2/E3, B1/E4a cùng K bước PC+, 12 hình phân tích lỗi, demo và báo cáo nháp; khóa 20/10 |
 | S3 | 21–27/10 | Người khác đọc, xem và chạy lại được đồ án | Báo cáo và slide hoàn chỉnh, demo/video, gói code/README, kiểm tra gói nộp |
 
 S1 là sprint hiện tại. S2/S3 là dự kiến, được điều chỉnh tại Planning theo kết quả sprint trước. Demo P12 chuyển từ S3 lên S2 để phát hiện lỗi sớm. Viết báo cáo và thử pipeline diễn ra trong từng sprint. Mẫu LaTeX đã làm được ghi nhận là L01 Done; nội dung cuối cùng của báo cáo và slide vẫn chưa hoàn thành.
@@ -30,13 +30,13 @@ S1 là sprint hiện tại. S2/S3 là dự kiến, được điều chỉnh tạ
 
 Mỗi sprint có tối đa 35 giờ. Dành khoảng 3 giờ cho Planning, daily, refinement, Review và Retrospective. Các giờ trên thẻ là ước lượng ban đầu, không phải lịch cố định hoặc thời gian thực tế.
 
-| Sprint | Ước lượng các thẻ bắt buộc | Đã Done khi thiết lập Scrum | Phần còn lại | Quỹ học/sửa/dự phòng sau 3h quy trình |
+| Sprint | Ước lượng các thẻ bắt buộc | Đã Done đến 09/10 | Phần còn lại | Quỹ học/sửa/dự phòng sau 3h quy trình |
 |---|---:|---:|---:|---:|
-| S1 | 19,5h | 4,5h | 15h | 12,5h |
-| S2 | 20h | 0h | 20h | 12h |
+| S1 | 23,5h | 7,5h | 16h | 8,5h |
+| S2 | 30h | 0h | 30h | 2h |
 | S3 | 18h | 0h | 18h | 14h |
 
-L01 2h là ước lượng hồi cứu. P13 tăng lên 8h, chia hai lượt 4h để hoàn thiện báo cáo; P14 4h. P17 là kiểm tra bàn giao 2h; thời gian dự phòng được giữ trong capacity, không đóng vai trò một task 6h cần làm hết. O01 đối chứng 4h ở backlog tùy chọn và chỉ đưa vào S2 nếu đạt Sprint Goal sớm, còn capacity và GPU phù hợp. Không mở thí nghiệm mới trong S3.
+L01 2h là ước lượng hồi cứu. P13 tăng lên 8h, chia hai lượt 4h để hoàn thiện báo cáo; P14 4h. P17 là kiểm tra bàn giao 2h; thời gian dự phòng được giữ trong capacity, không đóng vai trò một task 6h cần làm hết. O01 Grounding DINO + SAM hoãn ngoài scope. O02 E4b D=128 là tùy chọn 4h, chỉ xét sau B1/E4a nếu còn GPU/capacity trước 20/10. P05 tăng từ 3h lên 4h; P18/P19 thêm 3h S1, P20–P22 thêm 10h S2. P05 bắt đầu S1, kết thúc dự kiến 14/10; công tập trung tính một lần vào S1, phần theo dõi kéo sang S2 cần xét lại sau pilot. Các quỹ trên tính theo tổng thẻ ban đầu, không phải giờ thực tế còn trong lịch. Không mở thí nghiệm mới trong S3.
 
 ## Trello
 
@@ -84,10 +84,12 @@ Nhịp ngày thường: 10 phút daily, 50 phút đọc/viết, 3 giờ làm th�
 
 ## Xử lý thay đổi và rủi ro
 
-Thẻ mới vào Product Backlog trước. Khi đổi phạm vi trong sprint, ghi lý do và đánh đổi, giữ Sprint Goal và chất lượng nghiệm thu. Nếu có nguy cơ trễ: bỏ O01 trước; giảm N thí nghiệm có ghi rõ; ưu tiên pipeline/GT đúng; giữ thời gian cho báo cáo và demo. Blocker dữ liệu quá 2 giờ cần chọn phương án tải/nguồn khác đã kiểm chứng; không lặp cùng một cách thử. Ngưỡng chỉ chọn trên calibration, support E2 khác ảnh query.
+Thẻ mới vào Product Backlog trước. Khi đổi phạm vi trong sprint, ghi lý do và đánh đổi, giữ Sprint Goal và chất lượng nghiệm thu. Nếu có nguy cơ trễ: bỏ O02 trước; giảm N thí nghiệm có ghi rõ; ưu tiên pipeline/GT đúng; giữ thời gian cho báo cáo và demo. Blocker dữ liệu quá 2 giờ cần chọn phương án tải/nguồn khác đã kiểm chứng; không lặp cùng một cách thử. Ngưỡng chỉ chọn trên calibration, support E2 khác ảnh query.
 
 ## Theo dõi tiến độ
 
 Theo dõi Goal đạt/chưa đạt, số thẻ Done và tổng **giờ còn lại ước lượng** mỗi ngày. Ghi giờ thực tế riêng nếu có, không coi số ước lượng là số đã đo. Chưa có sprint hoàn tất để tính velocity. Cuối sprint dùng công việc thực sự Done và các blocker đã gặp để điều chỉnh dự kiến sprint sau.
 
-Việc tiếp theo hiện tại: **P01 đọc paper và ghi chú**, sau đó **P03 chuẩn bị dữ liệu**. P00, P02 và L01 đã Done. E1–E3 chưa chạy benchmark.
+Cập nhật 09/10/2026: **P03 chuẩn bị train/miniv trên Kaggle** là việc duy nhất In Progress; P04/P18 Review / Test; P05/P06/P19 Sprint Backlog. P00/P01/P02/L01 giữ Done theo Trello. Sau input và review PR, chạy P19 pilot CUDA rồi P05 train E1. Ba notebook và 16 test đã qua kiểm tra CPU; PR #1 OPEN, chưa merge; chưa có benchmark Kaggle GPU và E4 chưa triển khai.
+
+Train bằng EPOCHS+BATCH_SIZE, ghi actual steps; miniv không train/chọn checkpoint, dùng epoch cuối. E4 giữ FiLM và thêm cross-attention với gate=0; đối chiếu B1 cùng K bước và PC+. Nguồn phạm vi hiện tại: [kế hoạch triển khai](../implementation-plan.md) và [backlog](backlog.md).

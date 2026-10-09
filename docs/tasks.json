@@ -17,7 +17,7 @@
     "title": "Đọc paper CLIPSeg và ghi chú 1 trang",
     "due_local": "2026-10-08T22:00:00+07:00",
     "hours": 3,
-    "status": "sprint_backlog",
+    "status": "done",
     "description": "Paper duy nhất cần đọc sâu: https://openaccess.thecvf.com/content/CVPR2022/papers/Luddecke_Image_Segmentation_Using_Text_and_Image_Prompts_CVPR_2022_paper.pdf\nĐọc Abstract + Figure 2, mục 3, visual prompt engineering và phần thực nghiệm. Trả lời 6 câu trong docs/paper-reading.md. Hoàn thành: tự giải thích ảnh + prompt → mask, FiLM, CLIP đóng băng và 2 hạn chế; viết ghi chú bằng lời của mình. Người đọc: bạn.",
     "sprint": 1,
     "priority": "P0",
@@ -40,48 +40,52 @@
   },
   {
     "id": "P03",
-    "title": "Chuẩn bị PhraseCut miniv và kiểm tra mask",
+    "title": "Chuẩn bị PhraseCut train + miniv trên Kaggle",
     "due_local": "2026-10-10T22:00:00+07:00",
     "hours": 4,
-    "status": "sprint_backlog",
-    "description": "Sau P02. Dùng nguồn chính thức https://github.com/ChenyunWu/PhraseCutDataset; tải miniv, chuyển polygon sang binary mask. Chọn tối đa 200 query, seed=42; split theo image_id: calibration khoảng 20%, evaluation khoảng 80%. Lưu manifest + nguồn + checksum. Xem 10 overlay GT để phát hiện lệch tọa độ. Nếu tải lỗi quá 2 giờ: dùng tập nhỏ có GT được kiểm chứng, ghi rõ tên/split và điều chỉnh benchmark.",
+    "status": "in_progress",
+    "description": "Phụ thuộc: P02. Chuẩn bị Kaggle Dataset có refer_train.json, refer_miniv.json, image_data_split.json và ảnh Visual Genome; TRAIN_ROOT/DATA_ROOT trỏ đúng. Xác nhận train/miniv không trùng image_id, lưu manifest/checksum/nguồn và query bị loại. Miniv mặc định 821 query/100 ảnh; dùng tập con phải ghi N.\n\nKiểm tra ≥10 GT overlay và 4 mẫu PhraseCut+; support train khác ảnh cùng phrase. Miniv không dùng train. Cache ảnh train để pilot không bị chi phối bởi mạng; nếu tải lỗi kéo dài, ghi blocker và phương án cache khác.\n\nĐã có annotation chính thức và CPU smoke. Chưa xác nhận input Kaggle đầy đủ hoặc review ≥10 GT overlay cho lượt GPU. Giữ In Progress, chưa Done.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
     "sprint": 1,
     "priority": "P0",
-    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn chuẩn bị phrasecut miniv và kiểm tra mask để có dữ liệu và GT đúng để số đo đáng tin cậy.",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn chuẩn bị phrasecut train + miniv trên kaggle để hoàn thành phạm vi đã chốt ngày 09/10.",
     "dependencies": [
       "P02"
     ],
-    "acceptance_criteria": "Sau P02. Dùng nguồn chính thức https://github.com/ChenyunWu/PhraseCutDataset; tải miniv, chuyển polygon sang binary mask. Chọn tối đa 200 query, seed=42; split theo image_id: calibration khoảng 20%, evaluation khoảng 80%. Lưu manifest + nguồn + checksum. Xem 10 overlay GT để phát hiện lệch tọa độ. Nếu tải lỗi quá 2 giờ: dùng tập nhỏ có GT được kiểm chứng, ghi rõ tên/split và điều chỉnh benchmark."
+    "acceptance_criteria": "Phụ thuộc: P02. Chuẩn bị Kaggle Dataset có refer_train.json, refer_miniv.json, image_data_split.json và ảnh Visual Genome; TRAIN_ROOT/DATA_ROOT trỏ đúng. Xác nhận train/miniv không trùng image_id, lưu manifest/checksum/nguồn và query bị loại. Miniv mặc định 821 query/100 ảnh; dùng tập con phải ghi N.\n\nKiểm tra ≥10 GT overlay và 4 mẫu PhraseCut+; support train khác ảnh cùng phrase. Miniv không dùng train. Cache ảnh train để pilot không bị chi phối bởi mạng; nếu tải lỗi kéo dài, ghi blocker và phương án cache khác.\n\nĐã có annotation chính thức và CPU smoke. Chưa xác nhận input Kaggle đầy đủ hoặc review ≥10 GT overlay cho lượt GPU. Giữ In Progress, chưa Done."
   },
   {
     "id": "P04",
     "title": "Chốt protocol và kiểm tra metric",
     "due_local": "2026-10-10T22:00:00+07:00",
     "hours": 2,
-    "status": "sprint_backlog",
-    "description": "Sau P03. Khóa manifest, split theo ảnh, threshold mặc định 0.3; ngưỡng chọn chỉ trên calibration. Kiểm tra metric bằng ví dụ tính tay. Ghi mean IoU theo query, cumulative IoU và AP theo query; không gọi là class mIoU/PASCAL-5i. Không min-max probability; upsample logits trước sigmoid.",
+    "status": "review_test",
+    "description": "Phụ thuộc: P03. Protocol chung: bilinear logits về ảnh gốc → sigmoid, không min-max; t=0.3 chính, ngưỡng bổ sung chọn trên calibration 20% ảnh, báo trên evaluation 80% ảnh, seed 42. Mean IoU theo query, cumulative IoU, Dice, mean AP pixel theo query; AP chưa khẳng định tương đương paper AP. GT hợp polygon bằng PIL.\n\nMiniv không train/chọn checkpoint; lấy epoch cuối. Ghi HF extract_layers [3,6,9], refined head, epoch/batch/steps, support khác ảnh và các sai khác với tác giả. E2/E3 dùng cùng model/manifest và paired bootstrap theo ảnh. E4a so B1 cùng K bước/PC+.\n\nProtocol đã viết và 16 test qua. Chuyển Review/Test để khóa manifest của lượt Kaggle và kiểm tra tiêu chí; chưa Done.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
     "sprint": 1,
     "priority": "P0",
     "user_story": "Là sinh viên thực hiện đồ án, tôi muốn chốt protocol và kiểm tra metric để có protocol cố định để so sánh các biến thể công bằng.",
     "dependencies": [
       "P03"
     ],
-    "acceptance_criteria": "Sau P03. Khóa manifest, split theo ảnh, threshold mặc định 0.3; ngưỡng chọn chỉ trên calibration. Kiểm tra metric bằng ví dụ tính tay. Ghi mean IoU theo query, cumulative IoU và AP theo query; không gọi là class mIoU/PASCAL-5i. Không min-max probability; upsample logits trước sigmoid."
+    "acceptance_criteria": "Phụ thuộc: P03. Protocol chung: bilinear logits về ảnh gốc → sigmoid, không min-max; t=0.3 chính, ngưỡng bổ sung chọn trên calibration 20% ảnh, báo trên evaluation 80% ảnh, seed 42. Mean IoU theo query, cumulative IoU, Dice, mean AP pixel theo query; AP chưa khẳng định tương đương paper AP. GT hợp polygon bằng PIL.\n\nMiniv không train/chọn checkpoint; lấy epoch cuối. Ghi HF extract_layers [3,6,9], refined head, epoch/batch/steps, support khác ảnh và các sai khác với tác giả. E2/E3 dùng cùng model/manifest và paired bootstrap theo ảnh. E4a so B1 cùng K bước/PC+.\n\nProtocol đã viết và 16 test qua. Chuyển Review/Test để khóa manifest của lượt Kaggle và kiểm tra tiêu chí; chưa Done."
   },
   {
     "id": "P05",
-    "title": "E1: baseline text trên tập đánh giá nhỏ",
-    "due_local": "2026-10-12T22:00:00+07:00",
-    "hours": 3,
+    "title": "E1: train PhraseCut+ và mốc pretrained",
+    "due_local": "2026-10-14T22:00:00+07:00",
+    "hours": 4,
     "status": "sprint_backlog",
-    "description": "Sau P04. Cache probability maps và ghi từng query; đo tại threshold=0.3; có thể quét 0.1–0.7 trên calibration rồi khóa ngưỡng. Hoàn thành: per_query.csv, summary.json, 6 hình định tính và cấu hình. Số bài gốc chỉ là tham chiếu khác protocol, không khẳng định tái lập chính xác.",
+    "description": "Phụ thuộc: P03, P04, P18, P19. Chạy TRAIN_DECODER=False trên full miniv làm mốc. Train TRAIN_MODE=phrasecut_plus, TRAIN_INIT=random_decoder, CLIP đóng băng; negative 0.2, crop, template, support khác ảnh và mixing theo notebook.\n\nNhập EPOCHS+BATCH_SIZE; steps_per_epoch=ceil(N_train/batch), giữ batch cuối, cosine theo total_steps. Dự kiến 4 epoch, batch 64, AMP sau pilot; ghi actual steps vì refined tác giả 50k, 4 epoch chỉ gần 20k.\n\nDùng epoch cuối; không chọn bằng miniv. Lưu checkpoint, train config/history, manifest, sample_metrics.csv, summary.json, ≥6 hình và Output Dataset cho E2/E3/E4. Bắt đầu S1, hoàn tất đầu S2 trước E2 (mốc 14/10).\n\nCode/CPU smoke đã có trong PR #1; chưa merge, chưa train full hoặc có benchmark GPU.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
     "sprint": 1,
     "priority": "P0",
-    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e1: baseline text trên tập đánh giá nhỏ để có baseline và pipeline chạy lại được cho các thí nghiệm sau.",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e1: train phrasecut+ và mốc pretrained để hoàn thành phạm vi đã chốt ngày 09/10.",
     "dependencies": [
-      "P04"
+      "P03",
+      "P04",
+      "P18",
+      "P19"
     ],
-    "acceptance_criteria": "Sau P04. Cache probability maps và ghi từng query; đo tại threshold=0.3; có thể quét 0.1–0.7 trên calibration rồi khóa ngưỡng. Hoàn thành: per_query.csv, summary.json, 6 hình định tính và cấu hình. Số bài gốc chỉ là tham chiếu khác protocol, không khẳng định tái lập chính xác."
+    "acceptance_criteria": "Phụ thuộc: P03, P04, P18, P19. Chạy TRAIN_DECODER=False trên full miniv làm mốc. Train TRAIN_MODE=phrasecut_plus, TRAIN_INIT=random_decoder, CLIP đóng băng; negative 0.2, crop, template, support khác ảnh và mixing theo notebook.\n\nNhập EPOCHS+BATCH_SIZE; steps_per_epoch=ceil(N_train/batch), giữ batch cuối, cosine theo total_steps. Dự kiến 4 epoch, batch 64, AMP sau pilot; ghi actual steps vì refined tác giả 50k, 4 epoch chỉ gần 20k.\n\nDùng epoch cuối; không chọn bằng miniv. Lưu checkpoint, train config/history, manifest, sample_metrics.csv, summary.json, ≥6 hình và Output Dataset cho E2/E3/E4. Bắt đầu S1, hoàn tất đầu S2 trước E2 (mốc 14/10).\n\nCode/CPU smoke đã có trong PR #1; chưa merge, chưa train full hoặc có benchmark GPU.",
+    "schedule_note": "Bắt đầu S1, hoàn tất đầu S2 ngày 14/10; giờ công tính một lần trong S1."
   },
   {
     "id": "P06",
@@ -89,29 +93,30 @@
     "due_local": "2026-10-13T22:00:00+07:00",
     "hours": 3,
     "status": "sprint_backlog",
-    "description": "Sau P01. Viết 3–4 trang: bài toán, CLIP, FiLM, decoder và visual conditioning; vẽ sơ đồ tự giải thích. Kiểm tra extract_layers theo checkpoint config; không chép các khẳng định 'đầu tiên' trong kế hoạch gốc.",
+    "description": "Phụ thuộc: P01 (Done theo Trello). Viết 3–4 trang về CLIP, FiLM, decoder refined, text/visual conditioning và PC+ gồm mẫu âm, template, support và mixing; vẽ sơ đồ E1. Phân biệt HF [3,6,9] với paper [3,7,9], PC+ với text-only và epoch/batch với iterations.\n\nNêu động cơ E4 giữ FiLM và thêm attention theo token; mọi claim có nguồn. Chưa có bằng chứng bản nháp kiến trúc hoàn chỉnh. Đưa về Sprint Backlog để chỉ một việc trực tiếp ở In Progress.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
     "sprint": 1,
     "priority": "P1",
     "user_story": "Là sinh viên thực hiện đồ án, tôi muốn viết nháp nền tảng và kiến trúc clipseg để có phần kiến trúc đủ rõ để trình bày mô hình.",
     "dependencies": [
       "P01"
     ],
-    "acceptance_criteria": "Sau P01. Viết 3–4 trang: bài toán, CLIP, FiLM, decoder và visual conditioning; vẽ sơ đồ tự giải thích. Kiểm tra extract_layers theo checkpoint config; không chép các khẳng định 'đầu tiên' trong kế hoạch gốc."
+    "acceptance_criteria": "Phụ thuộc: P01 (Done theo Trello). Viết 3–4 trang về CLIP, FiLM, decoder refined, text/visual conditioning và PC+ gồm mẫu âm, template, support và mixing; vẽ sơ đồ E1. Phân biệt HF [3,6,9] với paper [3,7,9], PC+ với text-only và epoch/batch với iterations.\n\nNêu động cơ E4 giữ FiLM và thêm attention theo token; mọi claim có nguồn. Chưa có bằng chứng bản nháp kiến trúc hoàn chỉnh. Đưa về Sprint Backlog để chỉ một việc trực tiếp ở In Progress."
   },
   {
     "id": "P07",
-    "title": "E2: text so với visual prompt",
-    "due_local": "2026-10-15T22:00:00+07:00",
+    "title": "E2: text/visual trên decoder E1 và E1b",
+    "due_local": "2026-10-17T22:00:00+07:00",
     "hours": 4,
     "status": "product_backlog",
-    "description": "Sau P05. Chọn 30 query có ảnh support khác image_id cùng loại mục tiêu; không dùng GT query để tạo support. So sánh text, support crop, support làm tối nền với cùng query + ngưỡng đã khóa. Hoàn thành: bảng paired IoU và 6 hình; ghi rõ E2 là tập con tuyển chọn, không phải PASCAL-5i hay tái lập bảng visual prompt của paper.",
+    "description": "Phụ thuộc: P05, P20. Chạy source/e2_text_vs_visual.ipynb với DECODER_CHECKPOINT epoch cuối E1, chạy thêm E1b. 30 query miniv ×3 support từ ảnh khác cùng phrase_structure.name; dùng GT của support, không GT query để tạo prompt.\n\nBiến thể: text_phrase, text_name, visual_crop, visual_dark, visual_crop_dark. Báo t=0.3; ΔIoU sau trung bình support/query, CI95% paired bootstrap theo ảnh và thắng/hòa/thua. Ngưỡng bổ sung chỉ calibration. Lưu e2_pairs.json, e2_variant_table.csv, per-query và ≥6 hình; không gọi là PASCAL-5i.\n\nNotebook và CPU smoke đã có; chưa chạy GPU với E1/E1b full. Code sẵn không đồng nghĩa thí nghiệm Done.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
     "sprint": 2,
     "priority": "P0",
-    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e2: text so với visual prompt để biết khi nào text hoặc ảnh mẫu phù hợp hơn.",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e2: text/visual trên decoder e1 và e1b để hoàn thành phạm vi đã chốt ngày 09/10.",
     "dependencies": [
-      "P05"
+      "P05",
+      "P20"
     ],
-    "acceptance_criteria": "Sau P05. Chọn 30 query có ảnh support khác image_id cùng loại mục tiêu; không dùng GT query để tạo support. So sánh text, support crop, support làm tối nền với cùng query + ngưỡng đã khóa. Hoàn thành: bảng paired IoU và 6 hình; ghi rõ E2 là tập con tuyển chọn, không phải PASCAL-5i hay tái lập bảng visual prompt của paper."
+    "acceptance_criteria": "Phụ thuộc: P05, P20. Chạy source/e2_text_vs_visual.ipynb với DECODER_CHECKPOINT epoch cuối E1, chạy thêm E1b. 30 query miniv ×3 support từ ảnh khác cùng phrase_structure.name; dùng GT của support, không GT query để tạo prompt.\n\nBiến thể: text_phrase, text_name, visual_crop, visual_dark, visual_crop_dark. Báo t=0.3; ΔIoU sau trung bình support/query, CI95% paired bootstrap theo ảnh và thắng/hòa/thua. Ngưỡng bổ sung chỉ calibration. Lưu e2_pairs.json, e2_variant_table.csv, per-query và ≥6 hình; không gọi là PASCAL-5i.\n\nNotebook và CPU smoke đã có; chưa chạy GPU với E1/E1b full. Code sẵn không đồng nghĩa thí nghiệm Done."
   },
   {
     "id": "P08",
@@ -119,30 +124,31 @@
     "due_local": "2026-10-17T22:00:00+07:00",
     "hours": 4,
     "status": "product_backlog",
-    "description": "Sau P05. Tối đa 100 query cố định: phrase gốc, 'a photo of {phrase}', 'the {phrase}', '{phrase} in the image'. So cùng ảnh/GT/ngưỡng; không sửa mục tiêu ngữ nghĩa; trung bình probability của 4 prompt là tùy chọn. Hoàn thành: bảng paired IoU/AP, hiệu ứng từng template, 6 ví dụ. Không chọn template từ evaluation để báo cáo như kết quả độc lập.",
+    "description": "Phụ thuộc: P05. Chạy source/e3_prompt_templates.ipynb trên epoch cuối decoder E1; 100 query cố định seed 42, bốn template: {phrase}, a photo of {phrase}, the {phrase}, {phrase} in the image.\n\nGiữ cùng query/GT/model/ngưỡng; báo đủ template tốt và kém, ΔIoU, CI95% bootstrap theo ảnh và thắng/hòa/thua. Lưu e3_template_table.csv, manifest/per-query và ≥6 hình. Không chọn template theo evaluation rồi coi đó là kết quả độc lập.\n\nNotebook/CPU smoke đã có; chưa có kết quả GPU trên E1 full. BATCH_SIZE trong E3 là batch inference, không thay batch train E1.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
     "sprint": 2,
     "priority": "P0",
     "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e3: thử 4 cách viết prompt để biết cách viết prompt ảnh hưởng tới chất lượng mask.",
     "dependencies": [
       "P05"
     ],
-    "acceptance_criteria": "Sau P05. Tối đa 100 query cố định: phrase gốc, 'a photo of {phrase}', 'the {phrase}', '{phrase} in the image'. So cùng ảnh/GT/ngưỡng; không sửa mục tiêu ngữ nghĩa; trung bình probability của 4 prompt là tùy chọn. Hoàn thành: bảng paired IoU/AP, hiệu ứng từng template, 6 ví dụ. Không chọn template từ evaluation để báo cáo như kết quả độc lập."
+    "acceptance_criteria": "Phụ thuộc: P05. Chạy source/e3_prompt_templates.ipynb trên epoch cuối decoder E1; 100 query cố định seed 42, bốn template: {phrase}, a photo of {phrase}, the {phrase}, {phrase} in the image.\n\nGiữ cùng query/GT/model/ngưỡng; báo đủ template tốt và kém, ΔIoU, CI95% bootstrap theo ảnh và thắng/hòa/thua. Lưu e3_template_table.csv, manifest/per-query và ≥6 hình. Không chọn template theo evaluation rồi coi đó là kết quả độc lập.\n\nNotebook/CPU smoke đã có; chưa có kết quả GPU trên E1 full. BATCH_SIZE trong E3 là batch inference, không thay batch train E1."
   },
   {
     "id": "P09",
     "title": "Phân tích lỗi và chọn hình minh họa",
-    "due_local": "2026-10-18T22:00:00+07:00",
+    "due_local": "2026-10-20T22:00:00+07:00",
     "hours": 3,
     "status": "product_backlog",
-    "description": "Sau P07/P08. Chọn 12 trường hợp gồm thành công và thất bại; nhóm vật nhỏ, nhiều vật, thuộc tính, quan hệ. Hoàn thành: hình ảnh/GT/prediction/prompt, lời giải thích có căn cứ; không dựng số liệu.",
+    "description": "Phụ thuộc: P07, P08, P22. Chọn ≥12 trường hợp thành công/thất bại từ E1/E1b, E2/E3 và E4/B1; nhóm vật nhỏ, nhiều vật, thuộc tính và quan hệ. Hình query/GT/prediction/prompt có checkpoint/split/ngưỡng.\n\nBắt đầu chọn hình E2/E3 từ 18/10, bổ sung E4/B1 sau P22 ngày 19/10 và hoàn tất 20/10 trước khóa số liệu P11.\n\nPhân tích text/visual tradeoff và thay đổi theo kích thước vật. Chưa có benchmark chính thức để chốt hình; không dùng smoke như kết quả chính.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
     "sprint": 2,
     "priority": "P1",
     "user_story": "Là sinh viên thực hiện đồ án, tôi muốn phân tích lỗi và chọn hình minh họa để giải thích giới hạn mô hình bằng bằng chứng cụ thể.",
     "dependencies": [
       "P07",
-      "P08"
+      "P08",
+      "P22"
     ],
-    "acceptance_criteria": "Sau P07/P08. Chọn 12 trường hợp gồm thành công và thất bại; nhóm vật nhỏ, nhiều vật, thuộc tính, quan hệ. Hoàn thành: hình ảnh/GT/prediction/prompt, lời giải thích có căn cứ; không dựng số liệu."
+    "acceptance_criteria": "Phụ thuộc: P07, P08, P22. Chọn ≥12 trường hợp thành công/thất bại từ E1/E1b, E2/E3 và E4/B1; nhóm vật nhỏ, nhiều vật, thuộc tính và quan hệ. Hình query/GT/prediction/prompt có checkpoint/split/ngưỡng.\n\nBắt đầu chọn hình E2/E3 từ 18/10, bổ sung E4/B1 sau P22 ngày 19/10 và hoàn tất 20/10 trước khóa số liệu P11.\n\nPhân tích text/visual tradeoff và thay đổi theo kích thước vật. Chưa có benchmark chính thức để chốt hình; không dùng smoke như kết quả chính."
   },
   {
     "id": "P10",
@@ -150,7 +156,7 @@
     "due_local": "2026-10-19T22:00:00+07:00",
     "hours": 3,
     "status": "product_backlog",
-    "description": "Viết phần nguồn dữ liệu, split, ngưỡng, metric và giới hạn so sánh. Khảo sát gọn 5–6 phương pháp từ nguồn chính thức; chỉ CLIPSeg đọc sâu. Bảng có prompt, output, cách dùng VLM; ghi phân biệt số tự đo và số công bố.",
+    "description": "Phụ thuộc: P03, P04, P01. Viết nguồn train/miniv, PC+ sinh online, epoch/batch/steps, checkpoint cuối và protocol. Khảo sát 5–6 phương pháp từ nguồn chính thức; đọc sâu CLIPSeg, dùng LAVT/CRIS giải thích động cơ E4.\n\nKhông chuyển số RefCOCO thành kỳ vọng PhraseCut. Nêu sai khác PIL/layer/support khác ảnh/miniv khác test; phân biệt số tự đo với số công bố. Kế hoạch và nghiên cứu E4 đã có; báo cáo hoàn chỉnh chưa xong.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
     "sprint": 2,
     "priority": "P1",
     "user_story": "Là sinh viên thực hiện đồ án, tôi muốn viết dữ liệu, protocol và khảo sát gọn để người đọc hiểu nguồn dữ liệu, phương pháp liên quan và protocol.",
@@ -159,26 +165,28 @@
       "P04",
       "P01"
     ],
-    "acceptance_criteria": "Viết phần nguồn dữ liệu, split, ngưỡng, metric và giới hạn so sánh. Khảo sát gọn 5–6 phương pháp từ nguồn chính thức; chỉ CLIPSeg đọc sâu. Bảng có prompt, output, cách dùng VLM; ghi phân biệt số tự đo và số công bố."
+    "acceptance_criteria": "Phụ thuộc: P03, P04, P01. Viết nguồn train/miniv, PC+ sinh online, epoch/batch/steps, checkpoint cuối và protocol. Khảo sát 5–6 phương pháp từ nguồn chính thức; đọc sâu CLIPSeg, dùng LAVT/CRIS giải thích động cơ E4.\n\nKhông chuyển số RefCOCO thành kỳ vọng PhraseCut. Nêu sai khác PIL/layer/support khác ảnh/miniv khác test; phân biệt số tự đo với số công bố. Kế hoạch và nghiên cứu E4 đã có; báo cáo hoàn chỉnh chưa xong."
   },
   {
     "id": "P11",
-    "title": "Chốt kết quả E1–E3",
+    "title": "Khóa E1/E1b/E2–E4 và báo cáo nháp",
     "due_local": "2026-10-20T22:00:00+07:00",
     "hours": 2,
     "status": "product_backlog",
-    "description": "Sau P05/P07/P08/P09. Khóa số liệu, manifest, prompt và commit checkpoint. Hoàn thành: bảng kết quả thống nhất có N/split/threshold, log đầy đủ; không thêm mô hình sau ngày 20/10.\nBổ sung bảng E1–E3 và hình vào LaTeX để có báo cáo nháp đọc được ở Sprint Review 2; ghi phần còn thiếu.",
+    "description": "Phụ thuộc: P05, P20, P07, P08, P09, P10, P22. Khóa số liệu 20/10: pretrained/E1/E1b, E2, E3, B1/E4a; E4b nếu đã chọn. Mọi bảng có N/split/ngưỡng/seed, epoch/batch/steps, checkpoint hash, manifest và log.\n\nSo E4a với B1 cùng K; không kết luận cải tiến kiến trúc chỉ từ B0. Đưa bảng/hình vào LaTeX nháp, ghi phần thiếu và kết quả âm. Không mở thí nghiệm mới sau 20/10. Chưa có bộ số liệu chính thức; không dùng smoke để đóng thẻ.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
     "sprint": 2,
     "priority": "P0",
-    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn chốt kết quả e1–e3 để có bộ kết quả thống nhất và báo cáo nháp để review.",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn khóa e1/e1b/e2–e4 và báo cáo nháp để hoàn thành phạm vi đã chốt ngày 09/10.",
     "dependencies": [
       "P05",
+      "P20",
       "P07",
       "P08",
       "P09",
-      "P10"
+      "P10",
+      "P22"
     ],
-    "acceptance_criteria": "Sau P05/P07/P08/P09. Khóa số liệu, manifest, prompt và commit checkpoint. Hoàn thành: bảng kết quả thống nhất có N/split/threshold, log đầy đủ; không thêm mô hình sau ngày 20/10.\nBổ sung bảng E1–E3 và hình vào LaTeX để có báo cáo nháp đọc được ở Sprint Review 2; ghi phần còn thiếu."
+    "acceptance_criteria": "Phụ thuộc: P05, P20, P07, P08, P09, P10, P22. Khóa số liệu 20/10: pretrained/E1/E1b, E2, E3, B1/E4a; E4b nếu đã chọn. Mọi bảng có N/split/ngưỡng/seed, epoch/batch/steps, checkpoint hash, manifest và log.\n\nSo E4a với B1 cùng K; không kết luận cải tiến kiến trúc chỉ từ B0. Đưa bảng/hình vào LaTeX nháp, ghi phần thiếu và kết quả âm. Không mở thí nghiệm mới sau 20/10. Chưa có bộ số liệu chính thức; không dùng smoke để đóng thẻ."
   },
   {
     "id": "P12",
@@ -186,14 +194,14 @@
     "due_local": "2026-10-20T22:00:00+07:00",
     "hours": 4,
     "status": "product_backlog",
-    "description": "Sau P02. Demo local hoặc Colab: ảnh query, text/ảnh support, threshold, heatmap và overlay. Quay video 60–90 giây dự phòng. Hoàn thành: thử ít nhất 3 ảnh với cả hai chế độ; không bắt buộc host public.",
+    "description": "Là sinh viên thực hiện đồ án, tôi muốn làm demo text và ảnh mẫu để người xem thử được text/visual prompt trong demo.\n\nSprint: 2 (dự kiến; chốt khi Sprint Planning). Ưu tiên: P0. Ước lượng ban đầu: 4h.\nPhụ thuộc: P02.\nPhụ trách: bạn. Quỹ thời gian: 5h/ngày.\n\nAcceptance Criteria / cách thực hiện:\nSau P02. Demo local hoặc Colab: ảnh query, text/ảnh support, threshold, heatmap và overlay. Quay video 60–90 giây dự phòng. Hoàn thành: thử ít nhất 3 ảnh với cả hai chế độ; không bắt buộc host public.\n\nDefinition of Done chung:\n- Đạt tiêu chí riêng của thẻ.\n- Có đường dẫn bằng chứng (code/log/CSV/PDF/hình) và cấu hình/nguồn khi áp dụng.\n- Chạy lại hoặc tự review phù hợp với loại công việc; cập nhật README/báo cáo liên quan.\n- Đưa qua Review/Test trước Done. Không đánh dấu xong việc chưa kiểm tra.\n\nTheo dõi thực tế: giờ còn lại __; bằng chứng __; blocker + bước tháo gỡ __.\n\nCập nhật 09/10/2026:\nDemo text/visual cần ghi rõ decoder pretrained/E1/E1b/E4 được sử dụng; notebook thực nghiệm chưa phải demo UI.\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge).",
     "sprint": 2,
     "priority": "P0",
     "user_story": "Là sinh viên thực hiện đồ án, tôi muốn làm demo text và ảnh mẫu để người xem thử được text/visual prompt trong demo.",
     "dependencies": [
       "P02"
     ],
-    "acceptance_criteria": "Sau P02. Demo local hoặc Colab: ảnh query, text/ảnh support, threshold, heatmap và overlay. Quay video 60–90 giây dự phòng. Hoàn thành: thử ít nhất 3 ảnh với cả hai chế độ; không bắt buộc host public."
+    "acceptance_criteria": "Là sinh viên thực hiện đồ án, tôi muốn làm demo text và ảnh mẫu để người xem thử được text/visual prompt trong demo.\n\nSprint: 2 (dự kiến; chốt khi Sprint Planning). Ưu tiên: P0. Ước lượng ban đầu: 4h.\nPhụ thuộc: P02.\nPhụ trách: bạn. Quỹ thời gian: 5h/ngày.\n\nAcceptance Criteria / cách thực hiện:\nSau P02. Demo local hoặc Colab: ảnh query, text/ảnh support, threshold, heatmap và overlay. Quay video 60–90 giây dự phòng. Hoàn thành: thử ít nhất 3 ảnh với cả hai chế độ; không bắt buộc host public.\n\nDefinition of Done chung:\n- Đạt tiêu chí riêng của thẻ.\n- Có đường dẫn bằng chứng (code/log/CSV/PDF/hình) và cấu hình/nguồn khi áp dụng.\n- Chạy lại hoặc tự review phù hợp với loại công việc; cập nhật README/báo cáo liên quan.\n- Đưa qua Review/Test trước Done. Không đánh dấu xong việc chưa kiểm tra.\n\nTheo dõi thực tế: giờ còn lại __; bằng chứng __; blocker + bước tháo gỡ __.\n\nCập nhật 09/10/2026:\nDemo text/visual cần ghi rõ decoder pretrained/E1/E1b/E4 được sử dụng; notebook thực nghiệm chưa phải demo UI.\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge)."
   },
   {
     "id": "P13",
@@ -201,7 +209,7 @@
     "due_local": "2026-10-23T22:00:00+07:00",
     "hours": 8,
     "status": "product_backlog",
-    "description": "Sau P06/P10/P11. Mục tiêu 15–20 trang nếu môn không có mẫu riêng: giới thiệu; nền tảng; CLIPSeg; khảo sát gọn; dữ liệu/protocol; E1–E3; lỗi/demo; kết luận. Hoàn thành: PDF đọc được, mọi con số có nguồn/log, trích dẫn và hạn chế đúng.\nTách thành hai lượt tối đa 4 giờ: hoàn thiện nội dung và đối chiếu số liệu; sau đó biên dịch PDF, kiểm tra trích dẫn/hình/bảng.",
+    "description": "Là sinh viên thực hiện đồ án, tôi muốn hoàn thiện báo cáo để người chấm đọc được báo cáo có nguồn và bằng chứng.\n\nSprint: 3 (dự kiến; chốt khi Sprint Planning). Ưu tiên: P0. Ước lượng ban đầu: 8h.\nPhụ thuộc: P06, P10, P11.\nPhụ trách: bạn. Quỹ thời gian: 5h/ngày.\n\nAcceptance Criteria / cách thực hiện:\nSau P06/P10/P11. Mục tiêu 15–20 trang nếu môn không có mẫu riêng: giới thiệu; nền tảng; CLIPSeg; khảo sát gọn; dữ liệu/protocol; E1–E3; lỗi/demo; kết luận. Hoàn thành: PDF đọc được, mọi con số có nguồn/log, trích dẫn và hạn chế đúng.\nTách thành hai lượt tối đa 4 giờ: hoàn thiện nội dung và đối chiếu số liệu; sau đó biên dịch PDF, kiểm tra trích dẫn/hình/bảng.\n\nDefinition of Done chung:\n- Đạt tiêu chí riêng của thẻ.\n- Có đường dẫn bằng chứng (code/log/CSV/PDF/hình) và cấu hình/nguồn khi áp dụng.\n- Chạy lại hoặc tự review phù hợp với loại công việc; cập nhật README/báo cáo liên quan.\n- Đưa qua Review/Test trước Done. Không đánh dấu xong việc chưa kiểm tra.\n\nTheo dõi thực tế: giờ còn lại __; bằng chứng __; blocker + bước tháo gỡ __.\n\nCập nhật 09/10/2026:\nBáo cáo bổ sung train PhraseCut+, E1b, E4/B1, epoch/batch/steps, sai khác protocol và giới hạn miniv/GPU.\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge).",
     "sprint": 3,
     "priority": "P0",
     "user_story": "Là sinh viên thực hiện đồ án, tôi muốn hoàn thiện báo cáo để người chấm đọc được báo cáo có nguồn và bằng chứng.",
@@ -210,7 +218,7 @@
       "P10",
       "P11"
     ],
-    "acceptance_criteria": "Sau P06/P10/P11. Mục tiêu 15–20 trang nếu môn không có mẫu riêng: giới thiệu; nền tảng; CLIPSeg; khảo sát gọn; dữ liệu/protocol; E1–E3; lỗi/demo; kết luận. Hoàn thành: PDF đọc được, mọi con số có nguồn/log, trích dẫn và hạn chế đúng.\nTách thành hai lượt tối đa 4 giờ: hoàn thiện nội dung và đối chiếu số liệu; sau đó biên dịch PDF, kiểm tra trích dẫn/hình/bảng."
+    "acceptance_criteria": "Là sinh viên thực hiện đồ án, tôi muốn hoàn thiện báo cáo để người chấm đọc được báo cáo có nguồn và bằng chứng.\n\nSprint: 3 (dự kiến; chốt khi Sprint Planning). Ưu tiên: P0. Ước lượng ban đầu: 8h.\nPhụ thuộc: P06, P10, P11.\nPhụ trách: bạn. Quỹ thời gian: 5h/ngày.\n\nAcceptance Criteria / cách thực hiện:\nSau P06/P10/P11. Mục tiêu 15–20 trang nếu môn không có mẫu riêng: giới thiệu; nền tảng; CLIPSeg; khảo sát gọn; dữ liệu/protocol; E1–E3; lỗi/demo; kết luận. Hoàn thành: PDF đọc được, mọi con số có nguồn/log, trích dẫn và hạn chế đúng.\nTách thành hai lượt tối đa 4 giờ: hoàn thiện nội dung và đối chiếu số liệu; sau đó biên dịch PDF, kiểm tra trích dẫn/hình/bảng.\n\nDefinition of Done chung:\n- Đạt tiêu chí riêng của thẻ.\n- Có đường dẫn bằng chứng (code/log/CSV/PDF/hình) và cấu hình/nguồn khi áp dụng.\n- Chạy lại hoặc tự review phù hợp với loại công việc; cập nhật README/báo cáo liên quan.\n- Đưa qua Review/Test trước Done. Không đánh dấu xong việc chưa kiểm tra.\n\nTheo dõi thực tế: giờ còn lại __; bằng chứng __; blocker + bước tháo gỡ __.\n\nCập nhật 09/10/2026:\nBáo cáo bổ sung train PhraseCut+, E1b, E4/B1, epoch/batch/steps, sai khác protocol và giới hạn miniv/GPU.\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge)."
   },
   {
     "id": "P14",
@@ -218,14 +226,14 @@
     "due_local": "2026-10-24T22:00:00+07:00",
     "hours": 4,
     "status": "product_backlog",
-    "description": "Sau P13. 12–15 slide cho 10–12 phút; tập trung kiến trúc, 3 bảng thực nghiệm, lỗi, demo và giới hạn. Chuẩn bị đáp án: vì sao CLIPSeg, có training không, threshold, khác bài gốc, visual prompt có rò GT không.",
+    "description": "Là sinh viên thực hiện đồ án, tôi muốn làm slide và chuẩn bị câu hỏi bảo vệ để trình bày đồ án rõ trong 10–12 phút.\n\nSprint: 3 (dự kiến; chốt khi Sprint Planning). Ưu tiên: P0. Ước lượng ban đầu: 4h.\nPhụ thuộc: P13.\nPhụ trách: bạn. Quỹ thời gian: 5h/ngày.\n\nAcceptance Criteria / cách thực hiện:\nSau P13. 12–15 slide cho 10–12 phút; tập trung kiến trúc, 3 bảng thực nghiệm, lỗi, demo và giới hạn. Chuẩn bị đáp án: vì sao CLIPSeg, có training không, threshold, khác bài gốc, visual prompt có rò GT không.\n\nDefinition of Done chung:\n- Đạt tiêu chí riêng của thẻ.\n- Có đường dẫn bằng chứng (code/log/CSV/PDF/hình) và cấu hình/nguồn khi áp dụng.\n- Chạy lại hoặc tự review phù hợp với loại công việc; cập nhật README/báo cáo liên quan.\n- Đưa qua Review/Test trước Done. Không đánh dấu xong việc chưa kiểm tra.\n\nTheo dõi thực tế: giờ còn lại __; bằng chứng __; blocker + bước tháo gỡ __.\n\nCập nhật 09/10/2026:\nCâu hỏi bảo vệ cập nhật: tự train gì, PC+ sinh thế nào, epoch/batch đổi steps ra sao, đối chứng E4 công bằng và bảo toàn visual prompt.\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge).",
     "sprint": 3,
     "priority": "P0",
     "user_story": "Là sinh viên thực hiện đồ án, tôi muốn làm slide và chuẩn bị câu hỏi bảo vệ để trình bày đồ án rõ trong 10–12 phút.",
     "dependencies": [
       "P13"
     ],
-    "acceptance_criteria": "Sau P13. 12–15 slide cho 10–12 phút; tập trung kiến trúc, 3 bảng thực nghiệm, lỗi, demo và giới hạn. Chuẩn bị đáp án: vì sao CLIPSeg, có training không, threshold, khác bài gốc, visual prompt có rò GT không."
+    "acceptance_criteria": "Là sinh viên thực hiện đồ án, tôi muốn làm slide và chuẩn bị câu hỏi bảo vệ để trình bày đồ án rõ trong 10–12 phút.\n\nSprint: 3 (dự kiến; chốt khi Sprint Planning). Ưu tiên: P0. Ước lượng ban đầu: 4h.\nPhụ thuộc: P13.\nPhụ trách: bạn. Quỹ thời gian: 5h/ngày.\n\nAcceptance Criteria / cách thực hiện:\nSau P13. 12–15 slide cho 10–12 phút; tập trung kiến trúc, 3 bảng thực nghiệm, lỗi, demo và giới hạn. Chuẩn bị đáp án: vì sao CLIPSeg, có training không, threshold, khác bài gốc, visual prompt có rò GT không.\n\nDefinition of Done chung:\n- Đạt tiêu chí riêng của thẻ.\n- Có đường dẫn bằng chứng (code/log/CSV/PDF/hình) và cấu hình/nguồn khi áp dụng.\n- Chạy lại hoặc tự review phù hợp với loại công việc; cập nhật README/báo cáo liên quan.\n- Đưa qua Review/Test trước Done. Không đánh dấu xong việc chưa kiểm tra.\n\nTheo dõi thực tế: giờ còn lại __; bằng chứng __; blocker + bước tháo gỡ __.\n\nCập nhật 09/10/2026:\nCâu hỏi bảo vệ cập nhật: tự train gì, PC+ sinh thế nào, epoch/batch đổi steps ra sao, đối chứng E4 công bằng và bảo toàn visual prompt.\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge)."
   },
   {
     "id": "P15",
@@ -249,7 +257,7 @@
     "due_local": "2026-10-26T22:00:00+07:00",
     "hours": 2,
     "status": "product_backlog",
-    "description": "Sau P13/P15. Kiểm tra môi trường, requirements lock, lệnh chạy, nguồn dữ liệu và output mẫu; chạy lại một query. Hoàn thành: repo/code, báo cáo, slide, video và README đủ để người khác hiểu và chạy.",
+    "description": "Là sinh viên thực hiện đồ án, tôi muốn đóng gói và chạy lại từ readme để người khác hiểu và chạy lại đồ án từ gói bàn giao.\n\nSprint: 3 (dự kiến; chốt khi Sprint Planning). Ưu tiên: P0. Ước lượng ban đầu: 2h.\nPhụ thuộc: P13, P14, P15.\nPhụ trách: bạn. Quỹ thời gian: 5h/ngày.\n\nAcceptance Criteria / cách thực hiện:\nSau P13/P15. Kiểm tra môi trường, requirements lock, lệnh chạy, nguồn dữ liệu và output mẫu; chạy lại một query. Hoàn thành: repo/code, báo cáo, slide, video và README đủ để người khác hiểu và chạy.\n\nDefinition of Done chung:\n- Đạt tiêu chí riêng của thẻ.\n- Có đường dẫn bằng chứng (code/log/CSV/PDF/hình) và cấu hình/nguồn khi áp dụng.\n- Chạy lại hoặc tự review phù hợp với loại công việc; cập nhật README/báo cáo liên quan.\n- Đưa qua Review/Test trước Done. Không đánh dấu xong việc chưa kiểm tra.\n\nTheo dõi thực tế: giờ còn lại __; bằng chứng __; blocker + bước tháo gỡ __.\n\nCập nhật 09/10/2026:\nGói notebook E1/E2/E3, script sinh, test (16 hiện tại + E4 khi có), config epoch/batch, checkpoint, manifest, Kaggle dependency và resume; chạy thử session sạch.\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge).",
     "sprint": 3,
     "priority": "P0",
     "user_story": "Là sinh viên thực hiện đồ án, tôi muốn đóng gói và chạy lại từ readme để người khác hiểu và chạy lại đồ án từ gói bàn giao.",
@@ -258,7 +266,7 @@
       "P14",
       "P15"
     ],
-    "acceptance_criteria": "Sau P13/P15. Kiểm tra môi trường, requirements lock, lệnh chạy, nguồn dữ liệu và output mẫu; chạy lại một query. Hoàn thành: repo/code, báo cáo, slide, video và README đủ để người khác hiểu và chạy."
+    "acceptance_criteria": "Là sinh viên thực hiện đồ án, tôi muốn đóng gói và chạy lại từ readme để người khác hiểu và chạy lại đồ án từ gói bàn giao.\n\nSprint: 3 (dự kiến; chốt khi Sprint Planning). Ưu tiên: P0. Ước lượng ban đầu: 2h.\nPhụ thuộc: P13, P14, P15.\nPhụ trách: bạn. Quỹ thời gian: 5h/ngày.\n\nAcceptance Criteria / cách thực hiện:\nSau P13/P15. Kiểm tra môi trường, requirements lock, lệnh chạy, nguồn dữ liệu và output mẫu; chạy lại một query. Hoàn thành: repo/code, báo cáo, slide, video và README đủ để người khác hiểu và chạy.\n\nDefinition of Done chung:\n- Đạt tiêu chí riêng của thẻ.\n- Có đường dẫn bằng chứng (code/log/CSV/PDF/hình) và cấu hình/nguồn khi áp dụng.\n- Chạy lại hoặc tự review phù hợp với loại công việc; cập nhật README/báo cáo liên quan.\n- Đưa qua Review/Test trước Done. Không đánh dấu xong việc chưa kiểm tra.\n\nTheo dõi thực tế: giờ còn lại __; bằng chứng __; blocker + bước tháo gỡ __.\n\nCập nhật 09/10/2026:\nGói notebook E1/E2/E3, script sinh, test (16 hiện tại + E4 khi có), config epoch/batch, checkpoint, manifest, Kaggle dependency và resume; chạy thử session sạch.\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge)."
   },
   {
     "id": "P17",
@@ -277,19 +285,17 @@
   },
   {
     "id": "O01",
-    "title": "Tùy chọn: Grounding DINO + SAM 2",
+    "title": "Grounding DINO + SAM 2",
     "due_local": "2026-10-20T22:00:00+07:00",
     "hours": 4,
-    "status": "product_backlog",
-    "description": "Chỉ chọn vào S2 nếu Goal E1–E3 + demo + báo cáo nháp đã đạt sớm trước Review 20/10, còn ít nhất 4h và GPU phù hợp. Chạy 30 ảnh; union mọi instance khớp prompt để so binary mask. Nếu cài đặt quá 2h thì dừng và ghi lý do; số công bố phải có nhãn nguồn. Không bắt buộc, không kéo sang S3.",
+    "status": "deferred",
+    "description": "09/10: hoãn khỏi phạm vi 3 tuần để dành GPU/thời gian cho E1/E1b và E4 cải tiến CLIPSeg. Không đưa vào S2/S3; chưa triển khai, không phải Done. Chỉ xét lại sau bàn giao hoặc có quyết định mở phạm vi mới.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge).",
     "sprint": null,
     "priority": "P2",
-    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn tùy chọn: grounding dino + sam 2 để có thêm đối chứng hiện đại khi phần bắt buộc đã ổn.",
-    "dependencies": [
-      "P11",
-      "P12"
-    ],
-    "acceptance_criteria": "Chỉ chọn vào S2 nếu Goal E1–E3 + demo + báo cáo nháp đã đạt sớm trước Review 20/10, còn ít nhất 4h và GPU phù hợp. Chạy 30 ảnh; union mọi instance khớp prompt để so binary mask. Nếu cài đặt quá 2h thì dừng và ghi lý do; số công bố phải có nhãn nguồn. Không bắt buộc, không kéo sang S3."
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn grounding dino + sam 2 để hoàn thành phạm vi đã chốt ngày 09/10.",
+    "dependencies": [],
+    "acceptance_criteria": "09/10: hoãn khỏi phạm vi 3 tuần để dành GPU/thời gian cho E1/E1b và E4 cải tiến CLIPSeg. Không đưa vào S2/S3; chưa triển khai, không phải Done. Chỉ xét lại sau bàn giao hoặc có quyết định mở phạm vi mới.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo: https://github.com/Quang-Luu-2005/XLAV; PR #1: https://github.com/Quang-Luu-2005/XLAV/pull/1 (OPEN, chưa merge).",
+    "scope_note": "Hoãn ngoài phạm vi 3 tuần; chưa triển khai, không phải Done."
   },
   {
     "id": "L01",
@@ -303,5 +309,103 @@
     "dependencies": [],
     "description": "Đã tạo manuscript/main.tex, metadata dùng chung, 5 chương, slides/clipseg_slides.tex 15 slide và script build. Đã biên dịch và xem kiểm tra hai PDF trong output/pdf. Đây là mẫu, chưa phải nội dung báo cáo hoàn chỉnh.",
     "acceptance_criteria": "Source LaTeX chỉnh sửa được, build bằng XeLaTeX/Biber, có PDF preview đã kiểm tra; metadata học kỳ cũ không bị mang sang."
+  },
+  {
+    "id": "P18",
+    "title": "Review và merge PR #1",
+    "hours": 1,
+    "sprint": 1,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn review và merge pr #1 để có bằng chứng thực nghiệm CLIPSeg chạy lại được.",
+    "dependencies": [
+      "P02"
+    ],
+    "description": "Cập nhật 09/10/2026. Sprint: 1. Ưu tiên: P0. Ước lượng công tập trung: 1h.\nPhụ thuộc: P02.\n\nAcceptance Criteria / Hiện trạng:\nReview PR #1: ba notebook E1/E2/E3, script sinh, PhraseCut+, cấu hình Kaggle và cách nạp checkpoint E1. Xác nhận 16 test và CPU smoke. Merge sau review; PR OPEN chưa phải đã tích hợp main. Hiện PR #1 OPEN, chưa merge.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
+    "acceptance_criteria": "Review PR #1: ba notebook E1/E2/E3, script sinh, PhraseCut+, cấu hình Kaggle và cách nạp checkpoint E1. Xác nhận 16 test và CPU smoke. Merge sau review; PR OPEN chưa phải đã tích hợp main. Hiện PR #1 OPEN, chưa merge.",
+    "status": "review_test",
+    "due_local": "2026-10-10T22:00:00+07:00"
+  },
+  {
+    "id": "P19",
+    "title": "Đo pilot Kaggle GPU và chốt epoch/batch",
+    "hours": 2,
+    "sprint": 1,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn đo pilot kaggle gpu và chốt epoch/batch để có bằng chứng thực nghiệm CLIPSeg chạy lại được.",
+    "dependencies": [
+      "P03",
+      "P04",
+      "P18"
+    ],
+    "description": "Cập nhật 09/10/2026. Sprint: 1. Ưu tiên: P0. Ước lượng công tập trung: 2h.\nPhụ thuộc: P03, P04, P18.\n\nAcceptance Criteria / Hiện trạng:\nInput ảnh train đã cache, GPU T4 và Internet. Chạy MAX_TRAIN_QUERIES=2000, EPOCHS=1, BATCH_SIZE=64, USE_AMP=True. run.json phải device=cuda; ghi thời gian/epoch, VRAM, steps, loss và resume. Nếu OOM giảm batch 32, ghi rõ. Đo rồi chốt epoch/ngân sách E1/E1b/E4; mỗi epoch phải vừa session do resume theo epoch. Chưa có lượt GPU; các ước tính trong kế hoạch chưa đo.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
+    "acceptance_criteria": "Input ảnh train đã cache, GPU T4 và Internet. Chạy MAX_TRAIN_QUERIES=2000, EPOCHS=1, BATCH_SIZE=64, USE_AMP=True. run.json phải device=cuda; ghi thời gian/epoch, VRAM, steps, loss và resume. Nếu OOM giảm batch 32, ghi rõ. Đo rồi chốt epoch/ngân sách E1/E1b/E4; mỗi epoch phải vừa session do resume theo epoch. Chưa có lượt GPU; các ước tính trong kế hoạch chưa đo.",
+    "status": "sprint_backlog",
+    "due_local": "2026-10-12T22:00:00+07:00"
+  },
+  {
+    "id": "P20",
+    "title": "E1b: ablation train text_only",
+    "hours": 3,
+    "sprint": 2,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e1b: ablation train text_only để có bằng chứng thực nghiệm CLIPSeg chạy lại được.",
+    "dependencies": [
+      "P05",
+      "P19"
+    ],
+    "description": "Cập nhật 09/10/2026. Sprint: 2. Ưu tiên: P0. Ước lượng công tập trung: 3h.\nPhụ thuộc: P05, P19.\n\nAcceptance Criteria / Hiện trạng:\nTRAIN_MODE=text_only; giữ seed, manifest, kiến trúc, optimizer, crop/negative/template và số bước ngang E1 để đo tác động bỏ support/mixing. Dùng epoch cuối, cùng miniv/ngưỡng. Lưu checkpoint/config/history/CSV/hình cho E2 đối chiếu. Nếu giảm epoch do GPU, ghi ngân sách không ngang nhau và tránh kết luận nhân quả sạch. Code có, chưa train full hoặc chạy GPU.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
+    "acceptance_criteria": "TRAIN_MODE=text_only; giữ seed, manifest, kiến trúc, optimizer, crop/negative/template và số bước ngang E1 để đo tác động bỏ support/mixing. Dùng epoch cuối, cùng miniv/ngưỡng. Lưu checkpoint/config/history/CSV/hình cho E2 đối chiếu. Nếu giảm epoch do GPU, ghi ngân sách không ngang nhau và tránh kết luận nhân quả sạch. Code có, chưa train full hoặc chạy GPU.",
+    "status": "product_backlog",
+    "due_local": "2026-10-16T22:00:00+07:00"
+  },
+  {
+    "id": "P21",
+    "title": "E4a: triển khai cross-attention gate=0",
+    "hours": 4,
+    "sprint": 2,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e4a: triển khai cross-attention gate=0 để có bằng chứng thực nghiệm CLIPSeg chạy lại được.",
+    "dependencies": [
+      "P05"
+    ],
+    "description": "Cập nhật 09/10/2026. Sprint: 2. Ưu tiên: P0. Ước lượng công tập trung: 4h.\nPhụ thuộc: P05.\n\nAcceptance Criteria / Hiện trạng:\nGiữ FiLM, thêm word-level cross-attention vào 3 block decoder; pixel làm Q, token CLIP text làm K/V, tanh gate=0. Module nằm trong model.decoder để optimizer/save không bỏ sót. Warm-start checkpoint E1 và kiểm tra missing/unexpected keys. Test gate=0 khớp output E1, backward cập nhật nhánh mới, token padding, shape và save/load. Visual/mixed không có text thuần phải bypass nhánh. Thêm test, regenerate notebook bằng script. Mới có nghiên cứu, chưa code.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
+    "acceptance_criteria": "Giữ FiLM, thêm word-level cross-attention vào 3 block decoder; pixel làm Q, token CLIP text làm K/V, tanh gate=0. Module nằm trong model.decoder để optimizer/save không bỏ sót. Warm-start checkpoint E1 và kiểm tra missing/unexpected keys. Test gate=0 khớp output E1, backward cập nhật nhánh mới, token padding, shape và save/load. Visual/mixed không có text thuần phải bypass nhánh. Thêm test, regenerate notebook bằng script. Mới có nghiên cứu, chưa code.",
+    "status": "product_backlog",
+    "due_local": "2026-10-18T22:00:00+07:00"
+  },
+  {
+    "id": "P22",
+    "title": "E4: chạy B1/E4a và đối chiếu công bằng",
+    "hours": 3,
+    "sprint": 2,
+    "priority": "P0",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e4: chạy b1/e4a và đối chiếu công bằng để có bằng chứng thực nghiệm CLIPSeg chạy lại được.",
+    "dependencies": [
+      "P05",
+      "P19",
+      "P21"
+    ],
+    "description": "Cập nhật 09/10/2026. Sprint: 2. Ưu tiên: P0. Ước lượng công tập trung: 3h.\nPhụ thuộc: P05, P19, P21.\n\nAcceptance Criteria / Hiện trạng:\nB0=E1; B1=E1 train tiếp K bước với kiến trúc gốc; E4a=E1+cross-attention cùng K. Cùng PC+, manifest, batch/lr/seed và ngưỡng; ghi K thực tế dù giao diện dùng epoch. So E4a với B1. Báo t=0.3 và ngưỡng calibration, CI paired bootstrap theo ảnh (ghi đơn vị resampling), chia theo kích thước vật. Chạy lại E2 để kiểm tra visual. Hai seed nếu đủ GPU; kết quả âm/không đổi vẫn báo. Chưa có E1 full/module/output E4.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
+    "acceptance_criteria": "B0=E1; B1=E1 train tiếp K bước với kiến trúc gốc; E4a=E1+cross-attention cùng K. Cùng PC+, manifest, batch/lr/seed và ngưỡng; ghi K thực tế dù giao diện dùng epoch. So E4a với B1. Báo t=0.3 và ngưỡng calibration, CI paired bootstrap theo ảnh (ghi đơn vị resampling), chia theo kích thước vật. Chạy lại E2 để kiểm tra visual. Hai seed nếu đủ GPU; kết quả âm/không đổi vẫn báo. Chưa có E1 full/module/output E4.",
+    "status": "product_backlog",
+    "due_local": "2026-10-19T22:00:00+07:00"
+  },
+  {
+    "id": "O02",
+    "title": "E4b dự phòng: reduce_dim 64 → 128",
+    "hours": 4,
+    "sprint": null,
+    "priority": "P2",
+    "user_story": "Là sinh viên thực hiện đồ án, tôi muốn e4b dự phòng: reduce_dim 64 → 128 để có bằng chứng thực nghiệm CLIPSeg chạy lại được.",
+    "dependencies": [
+      "P05",
+      "P19",
+      "P22"
+    ],
+    "description": "Cập nhật 09/10/2026. Sprint: tùy chọn. Ưu tiên: P2. Ước lượng công tập trung: 4h.\nPhụ thuộc: P05, P19, P22.\n\nAcceptance Criteria / Hiện trạng:\nChỉ chọn khi E4a/B1 và phần bắt buộc đã ổn, còn GPU/capacity trước 20/10. D=128 train từ đầu, cùng PC+ và số bước E1; không warm-start weights khác shape. Lưu config/checkpoint, so cùng miniv/protocol. +2.1 mIoU paper PC không phải số đo hay kỳ vọng chắc chắn cho PC+. Chưa chọn vào sprint/chưa code.\n\nDefinition of Done: đạt tiêu chí riêng, có bằng chứng và kiểm tra qua Review/Test; cập nhật tài liệu. Giờ trên thẻ là công tập trung ước lượng, khác GPU-giờ.\n\nNguồn 09/10/2026: docs/implementation-plan.md; source/README.md; reports/Cải tiến CLIPSeg cho E4.md. Repo/PR: https://github.com/Quang-Luu-2005/XLAV/pull/1.",
+    "acceptance_criteria": "Chỉ chọn khi E4a/B1 và phần bắt buộc đã ổn, còn GPU/capacity trước 20/10. D=128 train từ đầu, cùng PC+ và số bước E1; không warm-start weights khác shape. Lưu config/checkpoint, so cùng miniv/protocol. +2.1 mIoU paper PC không phải số đo hay kỳ vọng chắc chắn cho PC+. Chưa chọn vào sprint/chưa code.",
+    "status": "product_backlog",
+    "due_local": "2026-10-20T22:00:00+07:00",
+    "scope_note": "Tùy chọn chưa chọn vào sprint; không tính vào công bắt buộc."
   }
 ]
