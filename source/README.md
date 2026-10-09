@@ -1,11 +1,11 @@
 # Baseline CLIPSeg — PhraseCut miniv trên Kaggle GPU
 
-File chạy chính: [baseline_clipseg_phrasecut_miniv.ipynb](baseline_clipseg_phrasecut_miniv.ipynb). Notebook tự chứa code; upload **một file `.ipynb`** là đủ, không cần clone repo XLAV hoặc submodule CLIPSeg. Mặc định train decoder theo **epoch + batch size** trên PhraseCut `train`, rồi đánh giá trên `miniv`.
+File chạy chính: [baseline_clipseg_phrasecut_miniv.ipynb](baseline_clipseg_phrasecut_miniv.ipynb). Notebook tự chứa code; upload **một file `.ipynb`** là đủ, không cần clone repo XLAV hoặc submodule CLIPSeg. Mặc định (`TRAIN_DECODER=False`) là **E1**: đánh giá checkpoint pretrained trên `miniv`, không train. Bật `TRAIN_DECODER=True` để train decoder theo **epoch + batch size** trên PhraseCut `train` (ngoài phạm vi kế hoạch).
 
 ## Chạy trên Kaggle
 
 1. Tạo notebook Kaggle, dùng **Import Notebook** để upload file trên.
-2. Trong Settings, chọn GPU (ví dụ T4) và bật Internet. Baseline dùng GPU đầu tiên.
+2. Trong Settings, chọn Accelerator **GPU T4 x2** (tránh P100: PyTorch mới của Kaggle có thể không hỗ trợ) và bật Internet. Baseline dùng GPU đầu tiên.
 3. Đặt `EPOCHS`, `BATCH_SIZE`, và `TRAIN_ROOT` nếu đã Add Input tập train. Chạy **Run All**. Mặc định tải annotation từ nguồn PhraseCut chính thức, ảnh theo URL trong metadata và base checkpoint từ Hugging Face.
 4. Tải `clipseg_baseline_miniv.zip` trong Output. Các file gốc nằm tại `/kaggle/working/clipseg_baseline_miniv/`.
 
@@ -22,7 +22,7 @@ MAX_QUERIES = None
 
 `steps_per_epoch = ceil(N_train / BATCH_SIZE)`; `total_steps = EPOCHS * steps_per_epoch`. Mỗi epoch duyệt hết các train query đã chọn; không bỏ batch cuối. Không còn tham số `max_iterations`. Scheduler cosine theo số bước thực tế được tính từ epoch/batch, không giữ mốc 20.000 steps của tác giả.
 
-Mặc định notebook đặt `EPOCHS=1`, `BATCH_SIZE=8`, huấn luyện decoder ngẫu nhiên với CLIP pretrained đóng băng. Chọn `TRAIN_INIT="pretrained_decoder"` để fine-tune decoder sẵn có, hoặc `TRAIN_DECODER=False` để chỉ chạy baseline pretrained. Đây là ba thiết lập khác nhau, cần ghi rõ khi báo số liệu.
+Khi bật `TRAIN_DECODER=True`, notebook đặt `EPOCHS=1`, `BATCH_SIZE=8`, huấn luyện decoder ngẫu nhiên với CLIP pretrained đóng băng. Chọn `TRAIN_INIT="pretrained_decoder"` để fine-tune decoder sẵn có; mặc định `TRAIN_DECODER=False` chỉ chạy baseline pretrained. Đây là ba thiết lập khác nhau, cần ghi rõ khi báo số liệu.
 
 Cell cấu hình có `MAX_QUERIES=None` để chạy toàn bộ 821 query / 100 ảnh của miniv. Đặt `8` để kiểm tra nhanh, hoặc `200` để chạy E1 gọn theo kế hoạch. `MAX_TRAIN_QUERIES=8` chạy thử train trên 8 query **từ split train**, không lấy miniv để train. Danh sách query được lưu, sampling và chia ảnh dùng seed 42. Mặc định FP32, batch 8; nếu thiếu VRAM, giảm batch xuống 4 hoặc 1. Có thể bật `USE_AMP=True` cho FP16, nhưng phải ghi cấu hình này khi so sánh kết quả.
 
