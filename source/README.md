@@ -87,3 +87,19 @@ Timing forward/resize/sigmoid được đo sau warm-up, đồng bộ CUDA; khôn
 Notebook được kiểm tra schema/cú pháp và chạy từ đầu tới cuối bằng CPU tại máy phát triển: train trên 8 query PhraseCut train thật với 2 epoch, batch 3; sau đó đánh giá 12 query miniv thật. Có 3 bước mỗi epoch, tổng 6 bước, giữ đủ 8 mẫu kể cả batch cuối. Resume từ epoch 1 cho ra trọng số decoder và loss epoch 2 khớp chính xác với lượt train liên tục; scheduler cũng khớp. Bộ kiểm tra tự động có 8 test đã pass.
 
 Các file kết quả kiểm tra ở `outputs/baseline-notebook-check/` và `outputs/baseline-notebook-resume/` (không đưa vào Git). Chưa thực thi trên session GPU Kaggle; `run.json` của lượt Kaggle mới là bằng chứng cho tốc độ và VRAM trên GPU.
+
+## E2 và E3
+
+Hai notebook riêng, cùng cách chạy trên Kaggle như E1 (upload một file `.ipynb`, GPU T4 x2, bật Internet, Run All). Phần tải dữ liệu, tải ảnh, model, rasterize GT và metric được chép từ notebook E1 bằng [`scripts/build_experiment_notebooks.py`](../scripts/build_experiment_notebooks.py), nên ba thí nghiệm dùng chung protocol. Sửa E1 xong thì chạy lại script này để đồng bộ. Không sửa tay hai notebook E2/E3.
+
+| | [E2: text và visual prompt](e2_text_vs_visual_phrasecut_miniv.ipynb) | [E3: template câu](e3_prompt_templates_phrasecut_miniv.ipynb) |
+|---|---|---|
+| Query | 30 query miniv có ít nhất 3 ảnh support hợp lệ (seed 42) | 100 query miniv (seed 42, cách chọn giống E1) |
+| Biến thể | `text_phrase` (gốc), `text_name`, `visual_crop`, `visual_dark`, `visual_crop_dark` | `{phrase}` (gốc), `a photo of {phrase}`, `the {phrase}`, `{phrase} in the image` |
+| Support | Ảnh miniv **khác** có cùng `phrase_structure.name`, dùng mask GT của chính ảnh support; danh sách trong `e2_pairs.json` | Không dùng |
+| Bảng chính | `e2_variant_table.csv` | `e3_template_table.csv` |
+| Output | `/kaggle/working/clipseg_e2_text_vs_visual(.zip)` | `/kaggle/working/clipseg_e3_prompt_templates(.zip)` |
+
+Cả hai báo metric tại t=0,3 cho mọi biến thể, kèm ΔIoU theo query so với biến thể gốc, CI 95% bootstrap theo ảnh và số query thắng/hòa/thua. Ngưỡng bổ sung chỉ chọn trên calibration. Ở E2, các dòng visual là query × support. ΔIoU lấy trung bình IoU trên các support của mỗi query trước khi so.
+
+Kiểm tra trên CPU tại máy phát triển: E3 với 12 query (`{phrase}` cho mean IoU 0,5967, trùng E1 trên cùng 12 query) và E2 với 5 query × 2 support. Cả hai chạy hết các cell. Chưa chạy trên GPU Kaggle.
