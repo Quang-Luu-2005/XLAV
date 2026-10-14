@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 
-NOTEBOOK = Path(__file__).resolve().parents[1] / "source" / "baseline_clipseg_phrasecut_miniv.ipynb"
+NOTEBOOK = Path(__file__).resolve().parents[1] / "source" / "e1_train_eval_phrasecut.ipynb"
 
 
 def notebook_functions():
@@ -40,7 +40,7 @@ class BaselineNotebookTests(unittest.TestCase):
             if cell["cell_type"] == "code":
                 self.assertIsNone(cell["execution_count"])
                 self.assertEqual(cell["outputs"], [])
-                ast.parse(cell["source"])
+                ast.parse("".join(cell["source"]) if isinstance(cell["source"], list) else cell["source"])
 
     def test_polygon_union_xy_fractional_and_clipping(self):
         # First rectangle rounds to x=0..1, y=1..2; second clips at right edge.

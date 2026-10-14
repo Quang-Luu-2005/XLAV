@@ -21,3 +21,13 @@ Ngày: __ / Sprint: __
 - Giờ thực tế đã làm (nếu theo dõi): __
 - Đường dẫn output/log/PDF: __
 - Điều chỉnh backlog và lý do: __
+
+## Cập nhật phạm vi và Trello — 09/10/2026
+
+- Đọc lại kế hoạch triển khai, phần cập nhật kế hoạch gốc, source/README và nghiên cứu E4. Phạm vi chuyển sang tự train PhraseCut+, E1b và E4/B1; O01 hoãn, O02 tùy chọn.
+- Đã cập nhật 18 thẻ và tạo P18–P22/O02; đọc lại xác nhận 30 thẻ. P01 giữ Done theo trạng thái bạn đã cập nhật; không đánh dấu benchmark hoặc lượt GPU hoàn thành.
+- P03 là In Progress duy nhất. P04/P18 Review / Test; P05/P06/P19 Sprint Backlog. Tiếp theo: hoàn tất input/GT, review PR, pilot GPU, rồi train E1.
+- Kiểm tra: 16 test qua; output E1/E2/E3 hiện có là CPU smoke. PR #1 OPEN, chưa merge. Chưa có log Kaggle CUDA hoặc E4 triển khai.
+- Công bắt buộc còn 64h ước lượng, S1 còn 16h theo tổng thẻ chưa Done; không phải số giờ thực tế đã đo. S2 30h, dự phòng mỏng, GPU-giờ phải xác nhận bằng pilot P19.
+- Lịch dự kiến điều chỉnh: E1 hoàn tất 14/10, E1b 16/10, E2/E3 17/10, code E4 18/10, B1/E4a 19/10, khóa 20/10. Planning/Review tương lai chưa diễn ra.
+- Bằng chứng: [Trello](https://trello.com/b/85LHoRTG), [PR #1](https://github.com/Quang-Luu-2005/XLAV/pull/1), [backlog](backlog.md), `docs/tasks.json`, `docs/trello.json`.

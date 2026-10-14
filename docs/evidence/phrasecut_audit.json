@@ -1,0 +1,32 @@
+{
+  "dataset": "poudelsandeep/phrasecut",
+  "smoke_train_queries": 512,
+  "smoke_train_images": 508,
+  "miniv_queries": 821,
+  "miniv_images": 100,
+  "train_miniv_image_overlap": 0,
+  "image_errors": 0,
+  "full_valid_train_queries": 310742,
+  "full_excluded_train_queries": 74,
+  "full_train_annotation_sha256": "442c5120e8f0e8d0d72e61e30510e0a4ce9d823df97c4759b4c593aaeada8717",
+  "full_train_manifest_sha256": "c2aa13e03ebbb2264e1c467c3fb1b4376c2df8d8dda8cc120ba0ccf5ad594ed5",
+  "full_test_annotation_sha256": "c3ffdd0cd1671a20e3ff80e32bc5448264afd3c49ec3c85877dae620e701aa8f",
+  "full_test_image_metadata_sha256": "d1584de5144fb3045c051680cc9c4d2419e8e4ede80f08d9b703b572e69badba",
+  "gt_preview_task_ids": [
+    "1159286__4067039",
+    "145__1624989",
+    "154__1535859",
+    "1710__4315528_4315525",
+    "2080__4535423",
+    "2321256__4207452",
+    "2330867__2712044",
+    "2409046__250032",
+    "429__1027569_1027566",
+    "512__1063772",
+    "542__1635773",
+    "542__1635774"
+  ],
+  "e2_query_support_pairs": 90,
+  "e2_support_same_image_violations": 0,
+  "note": "GT contact sheet is for visual QA; miniv is not used for training or checkpoint selection."
+}

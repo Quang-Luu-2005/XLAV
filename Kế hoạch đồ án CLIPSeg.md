@@ -1,6 +1,14 @@
 # Lấy CLIPSeg làm trục, thắng điểm bằng thực nghiệm gọn
 
-> **Quản lý triển khai:** [Scrum cho một người](docs/agile/scrum.md), 3 sprint trong 07–27/10/2026. S1: baseline và kiến trúc; S2: E1–E3, demo, báo cáo nháp; S3: gói bàn giao hoàn chỉnh. [Daily log](docs/agile/daily-log.md) · [Sprint Review/Retro](docs/agile/review-retro.md).
+> **Quản lý triển khai:** [Scrum cho một người](docs/agile/scrum.md), 3 sprint trong 07–27/10/2026. S1: chuẩn bị dữ liệu, đo thử và bắt đầu train E1; S2: train xong E1/E1b, chạy E2–E4, khóa số liệu 20/10; S3: báo cáo, slide, demo và gói bàn giao. [Daily log](docs/agile/daily-log.md) · [Sprint Review/Retro](docs/agile/review-retro.md).
+
+> **Cập nhật 09/10/2026, đổi hướng:** Đồ án chuyển từ "chỉ inference trên checkpoint có sẵn" sang **tự train lại CLIPSeg theo công thức PhraseCut+ của tác giả, rồi cải tiến một module**. Checkpoint `CIDAS/clipseg-rd64-refined` chỉ còn là mốc tham chiếu.
+> - **E1**: train decoder trên PhraseCut+. PhraseCut+ không có file công bố mà được sinh ngẫu nhiên từ PhraseCut lúc train. Kèm ablation **E1b** chỉ học text.
+> - **E2 / E3**: text vs visual prompt và template câu, chạy trên decoder E1.
+> - **E4**: thay khối fusion của decoder bằng word-level cross-attention (dự phòng: `reduce_dim` 128), theo [báo cáo nghiên cứu E4](reports/Cải%20tiến%20CLIPSeg%20cho%20E4.md).
+> - **Bỏ hoặc hoãn**: so sánh Grounding DINO + SAM / SAM 3 (E4 cũ) và các mở rộng Hạng 1–4 bên dưới.
+>
+> Chi tiết thay đổi, hiện trạng, lịch và việc cần làm tiếp: [kế hoạch thực thi](docs/implementation-plan.md). Notebook: [source/](source/).
 
 > **Cập nhật 07/10/2026:** Triển khai một người trong 3 tuần, 5 giờ/ngày, theo [kế hoạch thực thi hiện tại](docs/implementation-plan.md). Nội dung dài bên dưới là tham khảo cho phạm vi 3 người / 10 tuần. Xem [paper cần đọc](docs/paper-reading.md), [README chạy code](README.md) và [Trello](https://trello.com/b/85LHoRTG/%C4%91%E1%BB%93-%C3%A1n-clipseg-1-ng%C6%B0%E1%BB%9Di-07-27102026).
 

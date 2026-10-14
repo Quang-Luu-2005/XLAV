@@ -4,7 +4,7 @@ Timo Lüddecke và Alexander S. Ecker, **Image Segmentation Using Text and Image
 
 - [PDF chính thức](https://openaccess.thecvf.com/content/CVPR2022/papers/Luddecke_Image_Segmentation_Using_Text_and_Image_Prompts_CVPR_2022_paper.pdf)
 - Bản tải về: `references/CLIPSeg_CVPR2022.pdf`.
-- [Bản dịch tiếng Việt](../output/pdf/clipseg-vietnamese/CLIPSeg_CVPR2022-vi.pdf) bằng skill VI-Translate; [phạm vi dịch và thuật ngữ](../references/clipseg-vi/README.md). Chữ trong hình, một số nhãn bảng và tài liệu tham khảo giữ tiếng Anh.
+- [Bản dịch tiếng Việt](../references/clipseg-vi/CLIPSeg_CVPR2022-vi.pdf) bằng skill VI-Translate; [phạm vi dịch và thuật ngữ](../references/clipseg-vi/README.md). Chữ trong hình, một số nhãn bảng và tài liệu tham khảo giữ tiếng Anh.
 - [Code tác giả](https://github.com/timojl/clipseg)
 - [Hướng dẫn HF 4.55.4](https://huggingface.co/docs/transformers/v4.55.4/en/model_doc/clipseg): tài liệu triển khai, không phải paper thứ hai cần đọc.
 

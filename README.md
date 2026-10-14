@@ -8,7 +8,15 @@ Kế hoạch hiện tại: [docs/implementation-plan.md](docs/implementation-pla
 
 Mô hình chính: `CIDAS/clipseg-rd64-refined`. Code nhận text hoặc ảnh support, xuất probability `.npy`, mask, heatmap, overlay và metadata. Đây là triển khai ban đầu; E1–E3 chưa có số liệu benchmark.
 
-Baseline Kaggle GPU: train decoder trên PhraseCut train theo epoch + batch size, đánh giá trên miniv. Xem [source/README.md](source/README.md) và [notebook độc lập](source/baseline_clipseg_phrasecut_miniv.ipynb). Upload notebook lên Kaggle, bật GPU và Internet, đặt `EPOCHS`/`BATCH_SIZE` rồi Run All. Đặt `TRAIN_DECODER=False` nếu chỉ đánh giá checkpoint pretrained.
+Notebook Kaggle (GPU T4 x2, bật Internet, Run All), hướng dẫn chi tiết ở [source/README.md](source/README.md):
+
+| Thí nghiệm | Notebook |
+|---|---|
+| E1: train decoder trên PhraseCut+ theo epoch + batch size, đánh giá miniv | [source/e1_train_eval_phrasecut.ipynb](source/e1_train_eval_phrasecut.ipynb) |
+| E2: text prompt và visual prompt | [source/e2_text_vs_visual.ipynb](source/e2_text_vs_visual.ipynb) |
+| E3: template câu | [source/e3_prompt_templates.ipynb](source/e3_prompt_templates.ipynb) |
+
+Không sửa tay các `.ipynb`: chúng được sinh bởi `scripts/build_baseline_notebook.py` (E1) và `scripts/build_experiment_notebooks.py` (E2/E3).
 
 ## Mã nguồn CLIPSeg gốc
 

@@ -5,6 +5,7 @@ data/
 outputs/
 output/
 tmp/
+.playwright-mcp/
 *.egg-info/
 .env
 .env.*
