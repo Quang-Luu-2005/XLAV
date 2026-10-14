@@ -1,16 +1,60 @@
 \chapter{Phương pháp CLIPSeg}
-\section{Tổng quan kiến trúc}
-[Vẽ hoặc chèn sơ đồ từ bài báo có dẫn nguồn: backbone CLIP, vector điều kiện và decoder.]
-\labfigure[0.75\textwidth]{figures/clipseg_architecture.pdf}{Sơ đồ CLIPSeg. Bổ sung hình và ghi rõ nguồn hoặc ghi ``sinh viên vẽ lại theo bài báo''.}{fig:architecture}
+\label{chap:method}
 
-\section{Mã hóa ảnh và prompt}
-[Giải thích đặc trưng đa mức của ảnh query; embedding text và embedding visual support. Đối chiếu cấu hình checkpoint với biến thể bài báo.]
+\section{Bài toán và mô hình nền}
+Với ảnh truy vấn $I\in\mathbb{R}^{H\times W\times3}$ và điều kiện $c$, bài toán là dự đoán mặt nạ nhị phân $M\in\{0,1\}^{H\times W}$ cho vùng được mô tả. Điều kiện có thể là cụm từ $T$ (\emph{text prompt}) hoặc ảnh mẫu $S$ (\emph{visual prompt}). Cùng một bộ giải mã nhận hai dạng điều kiện vì bộ mã hóa chữ và ảnh của CLIP đưa chúng về không gian biểu diễn chung. CLIP được tiền huấn luyện bằng cách ghép đúng ảnh với văn bản trong một lô mẫu; mục tiêu đó tạo ra biểu diễn hữu ích cho nhiều khái niệm nhưng không tự tạo mặt nạ ở mức pixel \cite{radford2021clip,luddecke2022clipseg}.
 
-\section{Conditioning bằng FiLM và decoder}
-[Giải thích phép điều biến theo đặc trưng, vai trò decoder và cách chuyển token thành logits. Viết công thức và giải nghĩa từng biến.]
+CLIPSeg bổ sung một decoder Transformer nhỏ lên CLIP đã đóng băng. Ảnh truy vấn đi qua nhánh thị giác của CLIP; đặc trưng ở một số lớp trung gian được chiếu về cùng chiều rồi đưa vào decoder. Prompt đi qua nhánh chữ hoặc nhánh ảnh để tạo vector điều kiện. Decoder kết hợp hai luồng và dự đoán logit cho từng vị trí; các logit được nội suy lên kích thước cần đánh giá \cite{luddecke2022clipseg}. Hình~\ref{fig:architecture} là sơ đồ của pipeline E1 trong đồ án, vẽ lại từ nguyên lý CLIPSeg và mã triển khai.
 
-\section{Text prompt và visual prompt}
-[Mô tả chuẩn bị support, crop hoặc giảm ảnh hưởng nền; phân biệt ảnh support khác query trong E2 với crop cùng ảnh chỉ dùng cho demo.]
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Latex, node distance=7mm and 5mm,
+  block/.style={draw,rounded corners,align=center,minimum height=9mm,text width=26mm,font=\small},
+  arrow/.style={->,thick}]
+  \node[block] (query) {Ảnh query $I$};
+  \node[block,right=of query] (vision) {CLIP image encoder\\đóng băng};
+  \node[block,right=of vision] (features) {Đặc trưng nhiều lớp\\chiếu về $D=64$};
+  \node[block,right=of features] (decoder) {FiLM + decoder\\Transformer};
+  \node[block,right=of decoder] (mask) {Logits $\rightarrow$\\mask};
+  \node[block,below=12mm of vision] (prompt) {Text $T$ hoặc\\ảnh support $S$};
+  \node[block,right=of prompt] (cond) {CLIP encoder tương ứng\\vector $c$};
+  \draw[arrow] (query)--(vision);
+  \draw[arrow] (vision)--(features);
+  \draw[arrow] (features)--(decoder);
+  \draw[arrow] (decoder)--(mask);
+  \draw[arrow] (prompt)--(cond);
+  \draw[arrow] (cond.east)-| (decoder.south);
+\end{tikzpicture}
+\caption{Pipeline E1 do sinh viên vẽ lại theo CLIPSeg \cite{luddecke2022clipseg}. Khi huấn luyện, chỉ decoder và các phép chiếu liên quan được cập nhật; hai nhánh CLIP giữ cố định.}
+\label{fig:architecture}
+\end{figure}
 
-\section{Suy luận và hậu xử lý}
-Trong triển khai của đồ án, logits được nội suy bilinear về kích thước ảnh gốc trước khi áp dụng sigmoid. Xác suất được đặt ngưỡng để tạo mask nhị phân. Không min--max normalize khi tính metric.
+\section{Mã hóa ảnh và điều kiện}
+Trong cấu hình ViT-B/16, ảnh được chia thành các patch $16\times16$ rồi mã hóa bằng Vision Transformer. Đặc trưng từ nhiều tầng giữ cả thông tin không gian lẫn ngữ nghĩa. CLIPSeg chiếu từng đặc trưng trích xuất về chiều $D$ trước khi đưa vào các khối decoder. Bài báo và cấu hình thí nghiệm gốc dùng các lớp $[3,7,9]$ cho biến thể liên quan; cấu hình Hugging Face của checkpoint \texttt{CIDAS/clipseg-rd64-refined} được dùng trong đồ án là $[3,6,9]$, $D=64$ \cite{luddecke2022clipseg,clipsegcode,hfclipseg}. Đây là khác biệt triển khai cần ghi rõ khi so sánh với số của bài báo, thay vì coi hai checkpoint là cùng một kiến trúc chi tiết.
+
+Với prompt chữ, tokenizer của CLIP chuyển cụm từ thành token và text encoder tạo embedding $c_T$. Với prompt ảnh, image encoder mã hóa ảnh support thành embedding $c_S$; vùng nền có thể được làm mờ hoặc làm tối để giảm nhiễu. Ảnh support là ví dụ về đối tượng cần tìm chứ không phải ảnh query cần dự đoán. Trong E2, support được lấy từ \emph{ảnh khác} có cùng tên cụm từ và vùng support được tạo từ mask GT của chính ảnh support. Mask GT của query không tham gia tạo prompt. Cách chuẩn bị support có thể ảnh hưởng mạnh đến chất lượng, nên E2 lưu cả biến thể crop, dark và crop+dark \cite{luddecke2022clipseg,clipsegcode}.
+
+\section{FiLM và bộ giải mã refined}
+CLIPSeg dùng Feature-wise Linear Modulation (FiLM) để đưa vector điều kiện vào đặc trưng ảnh. Với token ảnh $x_i\in\mathbb{R}^{D}$ tại vị trí $i$, hai phép biến đổi học được tạo ra $\gamma(c)$ và $\beta(c)$, rồi điều biến
+\begin{equation}
+  \widetilde{x}_i=\gamma(c)\odot x_i+\beta(c),
+  \label{eq:film}
+\end{equation}
+trong đó $\odot$ là nhân từng phần tử. Vì cùng vector $c$ tác động lên mọi vị trí, decoder học cách thay đổi đặc trưng không gian theo khái niệm được yêu cầu. Sau FiLM, các khối tự chú ý của Transformer trao đổi thông tin giữa các token ảnh; đặc trưng ở tầng CLIP trung gian được ghép bằng các nhánh chiếu/skip. Head refined của checkpoint được dùng trong đồ án nâng mẫu thành bản đồ logit trước khi khôi phục về độ phân giải ảnh \cite{luddecke2022clipseg,hfclipseg}.
+
+FiLM nhận một vector điều kiện toàn cục. Điều này thuận tiện cho cả text và visual prompt, nhưng có thể làm mất thông tin về từng từ khi câu mô tả gồm thuộc tính hoặc quan hệ. Giả thuyết E4a của đồ án là \emph{giữ nguyên FiLM} và bổ sung một nhánh cross-attention từ token ảnh tới token chữ, với cổng khởi tạo bằng $0$. Khi cổng bằng $0$, mô hình bắt đầu từ hành vi của E1; hiệu quả của nhánh mới phải được kiểm tra bằng đối chứng B1 train tiếp cùng số bước và cùng dữ liệu PhraseCut+. Đây là giả thuyết nghiên cứu, chưa phải kết quả đã được chứng minh.
+
+\section{Dữ liệu và huấn luyện PhraseCut+}
+PhraseCut cung cấp ảnh, cụm từ và polygon của các vùng tương ứng. Nếu một cụm từ chỉ nhiều instance, mask GT là hợp của các polygon. Trong E1, train chỉ dùng split \texttt{train}; \texttt{miniv} dùng kiểm tra nhanh và \texttt{test} dùng báo số cuối. Việc train trên PhraseCut khiến kết quả PhraseCut là đánh giá cùng phân phối dữ liệu, không được gọi là zero-shot \cite{luddecke2022clipseg,clipsegcode}.
+
+PhraseCut+ không phải tệp annotation mới; nó là quy trình sinh mẫu khi huấn luyện từ PhraseCut. Bản triển khai E1 dùng crop giữ vật thể, nhiều mẫu câu text, xác suất khoảng $0{,}2$ tạo prompt âm với mask rỗng, và ảnh support từ ảnh train khác có cùng cụm từ. Khi có support, vector điều kiện được trộn theo
+\begin{equation}
+  c=w c_T+(1-w)c_S,\qquad w\sim\mathcal{U}(0,0{,}5).
+  \label{eq:promptmix}
+\end{equation}
+Khi không có support hợp lệ, điều kiện chỉ dùng text. Bản tái tạo cố định quy tắc support khác ảnh và rasterize polygon bằng PIL; hai chi tiết này được ghi nhận là khác biệt so với mã gốc. E1b là đối chứng \texttt{text\_only}: không dùng support và không trộn embedding \cite{clipsegcode}. Việc phân biệt E1 với E1b cho phép đánh giá liệu huấn luyện cả hai dạng prompt có đổi chất lượng text-only hay không.
+
+CLIP được đóng băng, decoder được khởi tạo ngẫu nhiên trong E1 và tối ưu bằng binary cross-entropy, AdamW, mixed precision và lịch learning rate cosine. Đồ án đặt ngân sách theo số \emph{epoch} và batch size: $\lceil N_{\mathrm{train}}/B\rceil$ batch mỗi epoch, giữ cả batch cuối. Đây không đồng nghĩa với số \emph{iterations} cố định trong thí nghiệm tác giả. Với 310.742 query train hợp lệ, batch 64 và 5 epoch, lịch là 24.280 batch; số optimizer update thực tế là 24.271 vì AMP bỏ qua 9 lần cập nhật. Những con số này mô tả lượt E1 đã chạy, không phải tham số của paper. Checkpoint, manifest, seed và lịch sử train được giữ để có thể tiếp tục và đối chiếu.
+
+\section{Suy luận và giao thức đánh giá}
+Đầu ra decoder là logits $Z$ ở độ phân giải mô hình. Logits được nội suy bilinear về kích thước ảnh gốc rồi mới áp dụng sigmoid: $P=\sigma(\operatorname{Resize}_{\mathrm{bilinear}}(Z,H,W))$. Mask nhị phân tại ngưỡng $t$ là $\widehat{M}_t=\mathbb{1}[P\ge t]$; giá trị chính dùng $t=0{,}3$. Không min--max normalize theo từng ảnh trước khi tính metric, vì phép đó sẽ thay đổi ý nghĩa ngưỡng và làm các mẫu khó so sánh. Báo mean IoU theo query, cumulative IoU, Dice và các số đo khác cùng split, checkpoint và ngưỡng. Ngưỡng bổ sung nếu có chỉ được chọn trên phần calibration tách theo image ID; test không được dùng để chọn epoch hay ngưỡng. Những quyết định này là giao thức của đồ án, không mặc nhiên đồng nhất với toàn bộ giao thức đánh giá của tác giả.

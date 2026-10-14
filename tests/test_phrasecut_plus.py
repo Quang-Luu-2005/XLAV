@@ -18,7 +18,8 @@ def notebook_functions():
     nodes = []
     for cell in notebook["cells"]:
         if cell["cell_type"] == "code":
-            tree = ast.parse(cell["source"])
+            source = "".join(cell["source"]) if isinstance(cell["source"], list) else cell["source"]
+            tree = ast.parse(source)
             nodes.extend(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in NAMES)
     namespace = {"torch": torch, "F": F, "np": np}
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(NOTEBOOK), "exec"), namespace)
