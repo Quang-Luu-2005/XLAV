@@ -36,7 +36,7 @@ Tác giả không công bố PhraseCut+ thành file. Nó được tạo **ngẫu
 | Template ngẫu nhiên trong 9 mẫu | `PROMPT_AUGMENT=True` | `prompt: shuffle+` |
 | `cond = w·text + (1−w)·ảnh`, `w ~ U(0; 0,5)`, không có support thì `w = 1` | `MIX_TEXT_MAX=0.5` | `mix: True`, `mix_text_max: 0.5` |
 
-`TRAIN_MODE="text_only"` bỏ support và trộn embedding, tương ứng ablation `rd64-uni-novis` của tác giả. Hai điểm khác bản gốc: support luôn lấy từ ảnh khác, và GT rasterize bằng PIL như phần đánh giá. Notebook lưu `phrasecut_plus_samples.png` (4 mẫu: query, support, mask) để kiểm tra trước khi train.
+`TRAIN_MODE="text_only"` bỏ support và trộn embedding, tương ứng ablation `rd64-uni-novis` của tác giả. Khác bản gốc: support luôn lấy từ ảnh khác. GT train rasterize bằng skimage như bản gốc (decoder train trước 14/10 dùng PIL). Notebook lưu `phrasecut_plus_samples.png` (4 mẫu: query, support, mask) để kiểm tra trước khi train.
 
 Tác giả train batch 64, AdamW lr 1e-3 → 1e-4 cosine, AMP; `rd64-uni` 20.000 bước, `rd64-uni-refined` (checkpoint HF) 50.000 bước. Với 310.816 query train, 20.000 × 64 tương đương khoảng 4 epoch (`EPOCHS=4`, `BATCH_SIZE=64`). Trên Kaggle nên bật `USE_AMP=True`, đặt `NUM_WORKERS=4` khi ảnh train đã có trong Input, và chia lượt train qua nhiều session bằng `RESUME_CHECKPOINT`.
 
@@ -85,10 +85,36 @@ Nếu Google Drive/Visual Genome không tải được, dùng Add Input với ha
 
 - Checkpoint: [`CIDAS/clipseg-rd64-refined`](https://huggingface.co/CIDAS/clipseg-rd64-refined), revision `999e0328d9e10b484360c477313983f9afdd7050`.
 - Đánh giá dùng text prompt giữ nguyên phrase. Train chỉ cập nhật decoder (BCE, AdamW); support lấy mask GT của chính ảnh support trong split train; miniv không dùng để cập nhật trọng số hoặc chọn checkpoint.
-- Nội suy logits bilinear về kích thước ảnh gốc, sigmoid rồi ngưỡng **0,3**; không min-max normalize.
-- GT là hợp polygon của tất cả instance, rasterize bằng PIL theo [API PhraseCut](https://github.com/ChenyunWu/PhraseCutDataset/blob/276470b7773d8a230aee5b5536876fbc485fb04b/utils/data_transfer.py).
-- Báo mean IoU theo query, cumulative IoU, Dice, mean AP pixel theo query và precision tại IoU 0,3/0,5/0,7/0,9. AP này chưa khẳng định cùng protocol với paper CLIPSeg.
-- Báo kết quả cố định t=0,3 cho toàn bộ query được chọn; báo riêng calibration/evaluation, chia theo image_id 20%/80%. Ngưỡng bổ sung chỉ được chọn trên calibration rồi áp dụng lên evaluation.
+### Protocol đánh giá theo paper (`paper_protocol` trong `summary.json`)
+
+Bám theo code đánh giá của tác giả: [score.py](../third_party/clipseg/score.py) (nhánh `phrasecut`), [metrics.py](../third_party/clipseg/metrics.py) `FixedIntervalMetrics` và [datasets/phrasecut.py](../third_party/clipseg/datasets/phrasecut.py) với `aug_crop=False`:
+
+| Bước | Cách làm |
+|---|---|
+| Ảnh vào model | Resize thẳng về 352×352 bằng bilinear `align_corners=True`, chia 255, chuẩn hóa mean/std. Áp dụng cho cả E1, E2, E3 và ảnh support |
+| Prompt | Giữ nguyên phrase, không template |
+| GT | Hợp polygon mọi instance bằng `skimage.draw.polygon2mask` (x, y đảo thành hàng, cột), rồi resize nearest về 352×352 |
+| Độ phân giải chấm | **352×352**, sigmoid, FP32 (`EVAL_AMP=False`) |
+| Ngưỡng | 49 ngưỡng 0,02–0,98; pixel dương khi `p > t` |
+| `miou_0.3` (cột mIoU của paper) | Trung bình theo query của `tp/(1+tp+fp+fn)` tại t=0,3 |
+| `fgiou_0.3` (IoU_FG) | Cộng dồn tp, fp, fn của mọi pixel mọi query rồi tính `tp/(1+tp+fp+fn)` |
+| `ap` (AP) | Cộng dồn tp, fp, fn tại 49 ngưỡng → đường precision–recall của cả tập → tích phân Simpson |
+
+`tests/test_baseline_notebook.py` so code này với bản chép lại vòng lặp `FixedIntervalMetrics` của tác giả; kết quả trùng đến 12 chữ số thập phân. Thống kê từng query tại 49 ngưỡng được lưu ở `paper_threshold_stats.npz` để tính lại metric mà không phải chạy lại model.
+
+**Kiểm chứng:** checkpoint của tác giả, chấm bằng protocol này trên miniv (821 query), đạt **43,5 / 53,8 / 75,3** (mIoU / IoU_FG / AP), sát với số paper báo trên test (43,4 / 54,7 / 76,7). AP theo query ở độ phân giải gốc (cách cũ) cho khoảng 60–66, nên **chỉ `paper_protocol` mới so được với bảng paper**.
+
+### Metric ở độ phân giải gốc (giữ để so với các lượt trước)
+
+- Nội suy logits bilinear về kích thước ảnh gốc, sigmoid, ngưỡng **0,3** (`p >= t`), không min-max normalize.
+- Báo mean IoU theo query, cumulative IoU, Dice, mean AP pixel theo query, precision tại IoU 0,3/0,5/0,7/0,9.
+- Báo riêng calibration/evaluation, chia theo image_id 20%/80%; ngưỡng bổ sung chỉ chọn trên calibration rồi áp dụng lên evaluation.
+
+### Đánh giá decoder đã train mà không train lại
+
+Đặt `TRAIN_DECODER=False` và `DECODER_CHECKPOINT="/kaggle/input/.../checkpoints/decoder_epoch_005.pt"`. Notebook thay decoder của tác giả bằng decoder đó, rồi ghi đường dẫn, sha256 và epoch vào `summary.json`. Để `DECODER_CHECKPOINT=None` thì đánh giá checkpoint của tác giả. Hai lượt này trên `EVAL_SPLIT="test"` cho hai dòng chính của bảng E1.
+
+Thay đổi so với các lượt trước 14/10: tiền xử lý ảnh đổi từ processor HF sang cách của tác giả, và rasterize GT đổi từ PIL sang skimage. Vì vậy metric ở độ phân giải gốc có thể lệch nhẹ so với số cũ. Decoder đã train trước đó vẫn dùng được, chỉ cần đánh giá lại.
 
 Miniv chính thức có [100 ảnh và 821 phrase-region pairs](https://github.com/ChenyunWu/PhraseCutDataset). Paper báo số trên tập test, nên kết quả miniv không so trực tiếp với bảng paper; không gọi là zero-shot. Kết quả miniv dùng checkpoint **epoch cuối**, không chọn epoch theo miniv.
 

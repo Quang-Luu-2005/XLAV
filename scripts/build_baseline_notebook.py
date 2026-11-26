@@ -101,7 +101,9 @@ WEIGHT_DECAY = 0.01
 NUM_WORKERS = 4                  # worker tạo mẫu PhraseCut+ (Kaggle có 4 CPU); 0 khi chạy trên Windows
 MULTI_GPU = True                 # train chia mỗi batch cho mọi GPU (T4 x2) bằng DataParallel
 RESUME_CHECKPOINT = None         # checkpoint epoch của chính notebook, hoặc None
-USE_AMP = False                  # mặc định FP32 cho baseline
+USE_AMP = False                  # FP16 autocast khi TRAIN (nên True trên T4)
+EVAL_AMP = False                 # đánh giá FP32 như score.py của tác giả
+DECODER_CHECKPOINT = None        # TRAIN_DECODER=False: đánh giá decoder_epoch_XXX.pt đã train thay cho decoder tác giả
 SEED = 42
 THRESHOLD = 0.3
 CALIBRATION_FRACTION = 0.2
@@ -149,6 +151,7 @@ assert isinstance(EPOCHS, int) and EPOCHS >= 1
 assert TRAIN_INIT in ["random_decoder", "pretrained_decoder"]
 assert TRAIN_MODE in ["phrasecut_plus", "text_only"]
 assert EVAL_SPLIT in ["miniv", "val", "test"]
+assert not (TRAIN_DECODER and DECODER_CHECKPOINT), "DECODER_CHECKPOINT chỉ dùng khi TRAIN_DECODER=False."
 assert 0 <= NEGATIVE_PROB < 1 and 0 <= MIX_TEXT_MAX <= 1
 assert MAX_TRAIN_QUERIES is None or MAX_TRAIN_QUERIES >= 1
 assert 0 <= MIN_LEARNING_RATE <= LEARNING_RATE and LEARNING_RATE > 0
@@ -176,7 +179,7 @@ if device.type == "cuda":
     except RuntimeError as exc:
         raise RuntimeError("PyTorch của Kaggle không chạy được trên GPU này (thường gặp với P100). "
                            "Chọn Accelerator GPU T4 x2 rồi restart session.") from exc
-assert not USE_AMP or device.type == "cuda", "FP16 AMP yêu cầu CUDA."
+assert not (USE_AMP or EVAL_AMP) or device.type == "cuda", "FP16 AMP yêu cầu CUDA."
 WORK_ROOT.mkdir(parents=True, exist_ok=True)
 OUT = WORK_ROOT / "clipseg_e1"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -375,9 +378,19 @@ cell("markdown", """
 ## 5. Nạp model và định nghĩa inference/metric
 
 Dùng [triển khai CLIPSeg của Transformers](https://huggingface.co/docs/transformers/v4.55.4/en/model_doc/clipseg),
-revision checkpoint được cố định. GT được hợp polygon theo
-[API PhraseCut](https://github.com/ChenyunWu/PhraseCutDataset/blob/276470b7773d8a230aee5b5536876fbc485fb04b/utils/data_transfer.py).
-Không dùng GT để tạo text prompt hoặc thay đổi đầu vào ảnh.
+revision checkpoint được cố định. Tiền xử lý, rasterize GT và metric bám theo code đánh giá của tác giả
+([score.py](https://github.com/timojl/clipseg/blob/master/score.py),
+[metrics.py](https://github.com/timojl/clipseg/blob/master/metrics.py) `FixedIntervalMetrics`,
+[datasets/phrasecut.py](https://github.com/timojl/clipseg/blob/master/datasets/phrasecut.py)):
+
+- Ảnh resize **352×352** bằng bilinear `align_corners=True`, chia 255, chuẩn hóa mean/std; text giữ nguyên phrase.
+- GT: hợp polygon bằng `skimage.draw.polygon2mask`, rồi resize nearest về 352×352. Chấm **ở 352×352**, sigmoid, FP32.
+- 49 ngưỡng 0,02–0,98, pixel dương khi `p > t`. Với từng ngưỡng: `miou` = trung bình theo query của
+  `tp/(1+tp+fp+fn)`; `fgiou` = cộng dồn mọi pixel; AP = tích phân Simpson của đường precision–recall cộng dồn.
+- Bảng paper dùng `miou_0.3`, `fgiou_0.3`, `ap` (cột `pc_miou_0.3`, `pc_fgiou_0.3`, `pc_ap` trong `experiments/phrasecut.yaml`).
+
+Bên cạnh đó vẫn giữ metric ở độ phân giải ảnh gốc (IoU theo query, cumulative IoU, AP pixel theo query)
+để so với các lượt chạy trước. Không dùng GT để tạo text prompt hoặc thay đổi đầu vào ảnh.
 """
 )
 cell("code", """
@@ -389,42 +402,96 @@ assert processor.image_processor.size == {"height": 352, "width": 352}, "Process
 assert model.config.vision_config.patch_size == 16, "Baseline yêu cầu ViT-B/16."
 print("Model:", model_source, "| parameters:", sum(p.numel() for p in model.parameters()))
 
-def rasterize_gt(task, width, height):
-    mask = Image.new("L", (width, height), 0)
-    draw = ImageDraw.Draw(mask)
+try:
+    from skimage.draw import polygon2mask
+except ImportError as exc:
+    raise ImportError("Cần scikit-image (có sẵn trên Kaggle); cài bằng pip install scikit-image.") from exc
+try:
+    from scipy.integrate import simpson
+except ImportError:  # SciPy cũ
+    from scipy.integrate import simps as simpson
+
+# Tiền xử lý và độ phân giải chấm điểm theo score.py + datasets/phrasecut.py của CLIPSeg.
+PAPER_SIZE = 352
+PAPER_THRESHOLDS = np.linspace(0, 1, 51)[1:-1]   # 49 ngưỡng 0,02–0,98 như FixedIntervalMetrics
+image_mean = torch.tensor(processor.image_processor.image_mean, dtype=torch.float32).view(3, 1, 1)
+image_std = torch.tensor(processor.image_processor.image_std, dtype=torch.float32).view(3, 1, 1)
+
+def rasterize_gt(task, width, height, allow_empty=False):
+    \"\"\"Hợp polygon mọi instance bằng skimage polygon2mask (x, y đảo thành hàng, cột), như PhraseCut.load_sample.\"\"\"
+    target = np.zeros((height, width), dtype=bool)
     for instance in task["Polygons"]:
         for polygon in instance:
-            if len(polygon) >= 2:
-                draw.polygon([(int(x), int(y)) for x, y in polygon], outline=1, fill=1)
-    target = np.asarray(mask, dtype=bool)
-    if not target.any():
+            if len(polygon) >= 3:
+                target |= polygon2mask((height, width), np.asarray(polygon, dtype=np.float64)[:, ::-1])
+    if not allow_empty and not target.any():
         raise ValueError(f"GT rỗng: task {task['task_id']}")
     return target
+
+def paper_pixel_values(image):
+    \"\"\"Ảnh RGB → [3,352,352]: resize bilinear align_corners=True trên ảnh gốc, /255, chuẩn hóa mean/std.\"\"\"
+    pixels = torch.from_numpy(np.asarray(image, dtype=np.float32).copy()).permute(2, 0, 1).unsqueeze(0)
+    pixels = F.interpolate(pixels, size=(PAPER_SIZE, PAPER_SIZE), mode="bilinear", align_corners=True)[0]
+    return (pixels / 255 - image_mean) / image_std
+
+def paper_target(target):
+    \"\"\"GT ở độ phân giải gốc → 352×352 bằng nearest, như nnf.interpolate trong load_sample.\"\"\"
+    mask = torch.from_numpy(target.astype(np.uint8))[None, None]
+    return F.interpolate(mask, size=(PAPER_SIZE, PAPER_SIZE), mode="nearest")[0, 0].numpy().astype(bool)
+
+def paper_threshold_stats(probability, target):
+    \"\"\"tp, fp, fn, tn tại 49 ngưỡng (dương khi p > t) cho một query, như FixedIntervalMetrics.add.\"\"\"
+    order = np.argsort(probability, axis=None, kind="stable")
+    p, g = probability.ravel()[order], target.ravel()[order]
+    below = np.searchsorted(p, PAPER_THRESHOLDS, side="right")   # số pixel p <= t
+    fn = np.concatenate([[0], np.cumsum(g, dtype=np.int64)])[below]
+    tp = int(g.sum()) - fn
+    fp = (len(p) - below) - tp
+    tn = below - fn
+    return np.stack([tp, fp, fn, tn]).astype(np.int64)
+
+def paper_metrics(stats):
+    \"\"\"Metric bảng PhraseCut của paper từ stats [Q,4,49]: miou (trung bình theo query), fgiou (cộng dồn), AP Simpson.\"\"\"
+    stats = np.asarray(stats, dtype=np.float64)
+    tp, fp, fn = stats[:, 0], stats[:, 1], stats[:, 2]
+    s_tp, s_fp, s_fn = tp.sum(0), fp.sum(0), fn.sum(0)
+    made = (s_tp + s_fp) > 0
+    pairs = sorted(set(zip((s_tp / (1 + s_tp + s_fn))[made], (s_tp / (1 + s_tp + s_fp))[made])))
+    recalls, precisions = (np.array(v) for v in zip(*pairs))
+    fgiou = s_tp / (1 + s_tp + s_fp + s_fn)
+    miou = (tp / (1 + tp + fp + fn)).mean(0)
+    index = {t: int(np.argmin(np.abs(PAPER_THRESHOLDS - t))) for t in (0.3, 0.5)}
+    return {"n_queries": len(stats), "miou_0.3": float(miou[index[0.3]]), "fgiou_0.3": float(fgiou[index[0.3]]),
+            "fgiou_0.5": float(fgiou[index[0.5]]), "ap": float(simpson(precisions, x=recalls)),
+            "miou_best": float(miou.max()), "miou_best_t": float(PAPER_THRESHOLDS[miou.argmax()]),
+            "fgiou_best": float(fgiou.max()), "fgiou_best_t": float(PAPER_THRESHOLDS[fgiou.argmax()])}
 
 def synchronize():
     if device.type == "cuda":
         torch.cuda.synchronize(device)
 
 @torch.inference_mode()
-def predict_batch(image, batch_tasks):
+def predict_batch(image, batch_tasks, with_paper=False):
+    \"\"\"Xác suất ở kích thước ảnh gốc; with_paper=True trả thêm xác suất 352×352 để chấm theo paper.\"\"\"
     prompts = [PROMPT_TEMPLATE.format(phrase=t["phrase"]) for t in batch_tasks]
     inputs = dict(processor.tokenizer(text=prompts, padding=True, truncation=True, return_tensors="pt"))
-    inputs.update(processor(images=[image] * len(prompts), return_tensors="pt"))
+    inputs["pixel_values"] = paper_pixel_values(image).unsqueeze(0).repeat(len(prompts), 1, 1, 1)
     inputs = {k: v.to(device) for k, v in inputs.items()}
     synchronize()
     started = time.perf_counter()
-    context = torch.autocast(device_type="cuda", dtype=torch.float16) if USE_AMP else nullcontext()
+    context = torch.autocast(device_type="cuda", dtype=torch.float16) if EVAL_AMP else nullcontext()
     with context:
         logits = model(**inputs).logits
-    if logits.ndim == 2:
-        logits = logits.unsqueeze(0)
-    probabilities = F.interpolate(logits.float().unsqueeze(1), size=(image.height, image.width),
+    logits = logits.float().reshape(len(prompts), *logits.shape[-2:])
+    probabilities = F.interpolate(logits.unsqueeze(1), size=(image.height, image.width),
         mode="bilinear", align_corners=False).squeeze(1).sigmoid()
     synchronize()
     seconds = time.perf_counter() - started
     values = probabilities.cpu().numpy()
     if not np.isfinite(values).all():
-        raise ValueError("Prediction chứa NaN/Inf; thử USE_AMP=False.")
+        raise ValueError("Prediction chứa NaN/Inf; thử EVAL_AMP=False.")
+    if with_paper:
+        return values, logits.sigmoid().cpu().numpy(), seconds
     return values, seconds
 
 def binary_metrics(probability, target, threshold):
@@ -466,7 +533,7 @@ và vòng train trong [training.py](https://github.com/timojl/clipseg/blob/maste
 5. Trong vòng train: `cond = w·text + (1−w)·ảnh`, `w ~ U(0, MIX_TEXT_MAX)`; mẫu không có support dùng `w = 1`.
 
 `TRAIN_MODE="text_only"` bỏ bước 3 và 5, tương ứng cấu hình `rd64-uni-novis` của tác giả (ablation chỉ học text).
-Khác bản gốc: support luôn lấy từ ảnh khác (bản gốc có thể chọn trúng chính mẫu đó); GT rasterize bằng PIL như phần đánh giá.
+Khác bản gốc: support luôn lấy từ ảnh khác (bản gốc có thể chọn trúng chính mẫu đó). GT rasterize bằng skimage như bản gốc.
 
 `steps_per_epoch = ceil(N_train / BATCH_SIZE)`, `total_steps = EPOCHS × steps_per_epoch`.
 Mỗi epoch duyệt hết tập train đã chọn một lần, shuffle, **không bỏ batch cuối**.
@@ -625,8 +692,6 @@ if TRAIN_DECODER:
     all_train_phrases = sorted(tasks_by_phrase)
     queries_with_support = sum(1 for task in train_tasks if any(
         train_tasks[i]["image_id"] != task["image_id"] for i in tasks_by_phrase[task["phrase"]]))
-    image_mean = torch.tensor(processor.image_processor.image_mean, dtype=torch.float32).view(3, 1, 1)
-    image_std = torch.tensor(processor.image_processor.image_std, dtype=torch.float32).view(3, 1, 1)
 
     def load_train_sample(task):
         \"\"\"Ảnh chuẩn hóa [3,352,352] và mask [352,352], crop vuông ngẫu nhiên như load_sample gốc.\"\"\"
@@ -636,7 +701,8 @@ if TRAIN_DECODER:
         info = train_info_by_id[image_id]
         if image.size != (int(info["width"]), int(info["height"])):
             raise ValueError(f"Train ảnh {image_id} sai kích thước metadata.")
-        target = rasterize_gt(task, image.width, image.height)
+        # Như bản gốc: polygon quá mảnh có thể cho GT rỗng; mẫu đó vẫn được train với mask rỗng.
+        target = rasterize_gt(task, image.width, image.height, allow_empty=True)
         pixels = torch.from_numpy(np.asarray(image, dtype=np.float32).copy()).permute(2, 0, 1)
         if AUG_CROP:
             y, x, side = random_square_crop(target)
@@ -861,12 +927,27 @@ if TRAIN_DECODER:
     # Backbone không nhận gradient; chỉ decoder có tham số trainable.
     assert all(p.grad is None for p in model.clip.parameters())
     print(f"Training complete. Evaluate final epoch on {EVAL_SPLIT} next.")
+elif DECODER_CHECKPOINT:
+    # Chỉ đánh giá: thay decoder tác giả bằng decoder đã train trong một lượt E1 trước.
+    checkpoint = torch.load(DECODER_CHECKPOINT, map_location="cpu", weights_only=True)
+    if checkpoint.get("base_model_id") != MODEL_ID or checkpoint.get("base_model_revision") != MODEL_REVISION:
+        raise ValueError("Checkpoint được train trên base model/revision khác MODEL_ID/MODEL_REVISION.")
+    model.decoder.load_state_dict(checkpoint["decoder"])
+    model.eval()
+    training_metadata = {"enabled": False, "decoder_checkpoint": str(DECODER_CHECKPOINT),
+        "decoder_checkpoint_sha256": sha256(Path(DECODER_CHECKPOINT)), "decoder_epoch": checkpoint["epoch"],
+        "decoder_training": checkpoint.get("training"), "decoder_history": checkpoint.get("history")}
+    del checkpoint
+    print(f"Đánh giá decoder epoch {training_metadata['decoder_epoch']} từ {DECODER_CHECKPOINT}")
+else:
+    print("Đánh giá decoder pretrained của tác giả (CIDAS/clipseg-rd64-refined).")
 """
 )
 cell("markdown", """
 ## 8. Inference toàn bộ query đã chọn của split đánh giá
 
-Warm-up trước khi đo. Batch các phrase trên cùng ảnh để resize output đúng kích thước.
+Warm-up trước khi đo. Batch các phrase trên cùng ảnh. Mỗi query được chấm hai cách: theo paper
+(352×352, 49 ngưỡng, lưu `paper_threshold_stats.npz` để tính lại được) và ở độ phân giải gốc.
 Lưu mask theo `task_id.png`, đúng quy ước PhraseCut; GT, ảnh phân tích và probability tùy chọn
 được ghi riêng. CSV được checkpoint sau mỗi ảnh; nếu lỗi, kết quả một phần giữ lại nhưng
 chưa có `summary.json` hoàn chỉnh. Chạy lại cell sẽ tính lại toàn bộ để tránh ghép nhầm lượt chạy.
@@ -911,7 +992,7 @@ def save_visualization(image, target, probability, task, metrics, index):
     fig.savefig(OUT / "visualizations" / f"{index:02d}_{task['task_id']}.png", dpi=120, bbox_inches="tight")
     plt.close(fig)
 
-rows, sweep_rows, batch_times = [], [], []
+rows, sweep_rows, batch_times, paper_stats = [], [], [], []
 visual_count = 0
 started_all = time.perf_counter()
 for image_id in tqdm(image_ids, desc="CLIPSeg images"):
@@ -920,10 +1001,12 @@ for image_id in tqdm(image_ids, desc="CLIPSeg images"):
     current_tasks = tasks_by_image[image_id]
     for start in range(0, len(current_tasks), BATCH_SIZE):
         batch = current_tasks[start:start + BATCH_SIZE]
-        probabilities, seconds = predict_batch(image, batch)
+        probabilities, probabilities_352, seconds = predict_batch(image, batch, with_paper=True)
+        assert probabilities_352.shape[-2:] == (PAPER_SIZE, PAPER_SIZE), probabilities_352.shape
         batch_times.append({"queries": len(batch), "forward_resize_seconds": seconds})
-        for task, probability in zip(batch, probabilities):
+        for task, probability, probability_352 in zip(batch, probabilities, probabilities_352):
             target = rasterize_gt(task, image.width, image.height)
+            paper_stats.append(paper_threshold_stats(probability_352, paper_target(target)))
             base = {"task_id": str(task["task_id"]), "image_id": image_id,
                 "phrase": task["phrase"], "prompt": PROMPT_TEMPLATE.format(phrase=task["phrase"]),
                 "group": group_for_image[image_id], "width": image.width, "height": image.height}
@@ -941,14 +1024,18 @@ for image_id in tqdm(image_ids, desc="CLIPSeg images"):
                 visual_count += 1
     write_csv(OUT / "sample_metrics.csv", rows)
 elapsed_all = time.perf_counter() - started_all
-assert len(rows) == len(selected), "Chưa đánh giá đủ query."
+assert len(rows) == len(selected) == len(paper_stats), "Chưa đánh giá đủ query."
+paper_stats = np.stack(paper_stats)
+np.savez_compressed(OUT / "paper_threshold_stats.npz", stats=paper_stats, thresholds=PAPER_THRESHOLDS,
+                    task_ids=np.array([r["task_id"] for r in rows]))
 print(f"Completed {len(rows)} queries; wall time {elapsed_all:.1f}s")
 """
 )
 cell("markdown", """
 ## 9. Tổng hợp và chọn ngưỡng trên calibration
 
-Báo cáo chính `selected_fixed_threshold` dùng t=0,3 cho toàn bộ query đã chọn.
+`paper_protocol` là số so được với bảng paper (`miou_0.3`, `fgiou_0.3`, `ap`; paper báo CLIPSeg PC+ trên test:
+43,4 / 54,7 / 76,7). `selected_fixed_threshold` là metric ở độ phân giải gốc, t=0,3, cho toàn bộ query đã chọn.
 Ngưỡng bổ sung được chọn bằng mean IoU **chỉ trên calibration**, rồi báo riêng trên evaluation.
 Không chọn template hoặc threshold theo evaluation. Nếu `MAX_QUERIES` khác None,
 ghi đây là tập con, không gắn nhãn kết quả toàn split.
@@ -971,7 +1058,11 @@ summary = {
     "calibration_fixed_threshold": summarize([r for r in rows if r["group"] == "calibration"]),
     "evaluation_fixed_threshold": summarize(evaluation_fixed),
     "evaluation_calibrated_threshold": summarize(evaluation_tuned),
-    "metric_note": "IoU averaged per query; pixel AP averaged per query, not claimed to match paper AP.",
+    "paper_protocol": paper_metrics(paper_stats),
+    "paper_reference_test": {"clipseg_pc_plus": {"miou_0.3": 0.434, "fgiou_0.3": 0.547, "ap": 0.767},
+                             "clipseg_pc": {"miou_0.3": 0.461, "fgiou_0.3": 0.562, "ap": 0.782}},
+    "metric_note": ("paper_protocol follows CLIPSeg score.py/FixedIntervalMetrics at 352x352 (49 thresholds, p > t); "
+                    "other blocks are at original resolution: IoU averaged per query, pixel AP averaged per query."),
 }
 write_json(OUT / "summary.json", summary)
 inference_seconds = sum(r["forward_resize_seconds"] for r in batch_times)
@@ -986,7 +1077,8 @@ run = {
     "prompt_template": PROMPT_TEMPLATE, "threshold": THRESHOLD, "threshold_grid": THRESHOLD_GRID,
     "calibration_fraction": CALIBRATION_FRACTION, "calibration_image_ids": sorted(calibration_ids),
     "evaluation_image_ids": sorted(set(image_ids) - calibration_ids),
-    "precision": "fp16_autocast" if USE_AMP else "fp32", "device": str(device),
+    "precision": "fp16_autocast" if EVAL_AMP else "fp32", "train_precision": "fp16_autocast" if USE_AMP else "fp32",
+    "device": str(device),
     "gpu_name": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
     "torch_cuda_version": torch.version.cuda, "python": platform.python_version(), "versions": versions,
     "image_processor": processor.image_processor.to_dict(), "model_config": model.config.to_dict(),
@@ -1001,6 +1093,9 @@ run = {
 }
 write_json(OUT / "run.json", run)
 print(json.dumps(summary, ensure_ascii=False, indent=2))
+paper = summary["paper_protocol"]
+print(f"Theo protocol paper ({EVAL_SPLIT}): mIoU {100 * paper['miou_0.3']:.1f} | IoU_FG {100 * paper['fgiou_0.3']:.1f} | "
+      f"AP {100 * paper['ap']:.1f}  (paper, CLIPSeg PC+ trên test: 43.4 | 54.7 | 76.7)")
 print(f"Forward+resize+sigmoid: {run['forward_resize_ms_per_query']:.2f} ms/query")
 """
 )

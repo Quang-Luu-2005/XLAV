@@ -1,63 +1,95 @@
-# XLAV — Đồ án CLIPSeg, 3 tuần, một người
+# CLIPSeg on PhraseCut: reproduction, LoRA on the CLIP encoder, SAM refinement
 
-Quản lý theo [Scrum cho một người](docs/agile/scrum.md): 3 sprint, 5h/ngày, WIP 1, Review/Test trước Done. Theo dõi tại [daily log](docs/agile/daily-log.md) và [review/retro](docs/agile/review-retro.md).
+A one-person, three-week study of [CLIPSeg](https://arxiv.org/abs/2112.10003) (Lüddecke & Ecker, CVPR 2022). CLIPSeg segments an image from a text phrase or an example image. The project has three parts:
 
-Mẫu LaTeX theo đồ án ADIVP: [báo cáo](manuscript/README.md) và [slide Beamer](slides/README.md). Sửa thông tin chung tại `manuscript/metadata.tex`; build cả hai bằng `powershell -ExecutionPolicy Bypass -File scripts/build_latex.ps1`.
+1. Retrain the CLIPSeg decoder on PhraseCut+ and evaluate it on the full PhraseCut test split with the paper's metrics.
+2. Look for where accuracy is limited. Several decoder changes did not help, so the frozen CLIP encoder became the next target, adapted with **LoRA**.
+3. Refine the masks with **SAM**, prompted only by CLIPSeg's own prediction.
 
-Kế hoạch hiện tại: [docs/implementation-plan.md](docs/implementation-plan.md). Paper và lộ trình đọc: [docs/paper-reading.md](docs/paper-reading.md). Kế hoạch khảo sát ban đầu: [Kế hoạch đồ án CLIPSeg.md](Kế%20hoạch%20đồ%20án%20CLIPSeg.md).
+Every model forward and backward pass ran on Kaggle T4 x2. The comparisons are paired over the same queries, and checkpoints were chosen on validation, never on test.
 
-Mô hình chính: `CIDAS/clipseg-rd64-refined`. Code nhận text hoặc ảnh support, xuất probability `.npy`, mask, heatmap, overlay và metadata. Đây là triển khai ban đầu; E1–E3 chưa có số liệu benchmark.
+## Results
 
-Notebook Kaggle (GPU T4 x2, bật Internet, Run All), hướng dẫn chi tiết ở [source/README.md](source/README.md):
+Full PhraseCut test split: 14,354 queries, 352×352, threshold 0.3. mIoU and IoU_FG are in %; AP is pooled precision–recall AP.
 
-| Thí nghiệm | Notebook |
-|---|---|
-| E1: train decoder trên PhraseCut+ theo epoch + batch size, đánh giá miniv | [source/e1_train_eval_phrasecut.ipynb](source/e1_train_eval_phrasecut.ipynb) |
-| E2: text prompt và visual prompt | [source/e2_text_vs_visual.ipynb](source/e2_text_vs_visual.ipynb) |
-| E3: template câu | [source/e3_prompt_templates.ipynb](source/e3_prompt_templates.ipynb) |
+| System | mIoU | IoU_FG | AP |
+|---|---|---|---|
+| CLIPSeg paper, PC+ (Table 3) | 43.4 | 54.7 | 76.7 |
+| E1: decoder retrained, 7 epochs | 46.66 | 54.81 | 77.95 |
+| B1: E1 + continued decoder training, 16 epochs in total | 47.21 | 55.46 | 78.01 |
+| **E4c: B1 schedule + LoRA on the CLIP vision encoder** | **47.71** | **55.80** | **78.32** |
 
-Không sửa tay các `.ipynb`: chúng được sinh bởi `scripts/build_baseline_notebook.py` (E1) và `scripts/build_experiment_notebooks.py` (E2/E3).
+**E4c vs B1, same epoch budget:**
 
-## Mã nguồn CLIPSeg gốc
+| Split | mIoU gain | 95% CI |
+|---|---|---|
+| Test | **+0.50** | [+0.41, +0.59] |
+| Validation (19,495 queries) | +0.61 | [+0.53, +0.68] |
 
-Repo tác giả [timojl/clipseg](https://github.com/timojl/clipseg) đã được clone vào [third_party/clipseg](third_party/clipseg), tại commit `77c4e2dc853880df46413d4a870a725e961f2f73`. Xem [hướng dẫn mã nguồn và chuẩn bị thực nghiệm](docs/clipseg-source.md) để tìm kiến trúc, notebook và cấu hình bài báo.
+The paper's numbers are quoted from its Table 3, not re-measured. The architecture is the Hugging Face `CIDAS/clipseg-rd64-refined` and the training schedule differs from the paper's, so the first row is a reference point rather than a matched baseline.
 
-Clone repo đồ án kèm mã nguồn gốc (Git submodule):
+### SAM refinement
+
+SAM ViT-B is prompted with a box and points taken from the CLIPSeg mask. These runs used the 9-epoch checkpoints.
+
+| System | CLIPSeg only | + SAM |
+|---|---|---|
+| E1 | 46.66 / 54.81 / 77.95 | 50.04 / 55.92 / 75.75 |
+| B1 (9 epochs) | 47.15 / 55.50 / 78.18 | 50.28 / 56.47 / 76.20 |
+| E4c, LoRA LR scale 0.03 (9 epochs) | 47.38 / 55.66 / 78.34 | **50.45 / 56.58 / 76.37** |
+
+Values are mIoU / IoU_FG / AP. SAM adds about +3 mIoU to every system. It costs about 2 AP points, because the refined masks are binary.
+
+## What was tried
+
+| Experiment | Question | Outcome |
+|---|---|---|
+| E1 | Can the decoder be retrained to paper-level accuracy? | Yes. It beats the paper's PC+ row on all three metrics, under this repository's protocol |
+| E2 | Text prompts vs visual (support-image) prompts | Notebook `source/e2_text_vs_visual.ipynb` |
+| E3 | Does the sentence template around the phrase matter? | Notebook `source/e3_prompt_templates.ipynb` |
+| E4 (decoder) | Word-level cross-attention, a wider decoder, text-only training | No reliable gain: −0.01 to −0.32 vs B1 over 3 seeds, at most +0.4 vs E1. The decoder is saturated |
+| **E4c** | LoRA on the frozen CLIP vision encoder | **+0.50 test mIoU** over B1, with a CI clear of zero |
+| E5 | SAM refinement from CLIPSeg prompts | About +3 mIoU, at an AP cost |
+
+**E4c design:**
+- LoRA rank 8, alpha 16, on `q_proj` and `v_proj` of CLIP vision layers 0–9, the layers that feed the decoder. That is 245,760 trainable parameters.
+- The original CLIP weights stay frozen.
+- Text and support-image embeddings still come from the original CLIP with LoRA off, so visual prompts keep their meaning.
+- The LoRA learning rate is 0.1× the decoder's. That scale was chosen on validation (46.71 vs 46.41 for 0.03).
+
+## Run it
+
+Use Python 3.12 on Windows.
 
 ```powershell
 git clone --recurse-submodules https://github.com/Quang-Luu-2005/XLAV.git
 cd XLAV
-```
-
-Nếu đã clone mà chưa có mã CLIPSeg, chạy `git submodule update --init --recursive`.
-
-## Cài và chạy trên Windows
-
-Python 3.12. Dùng môi trường riêng:
-
-```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe scripts/download_demo.py
 .\.venv\Scripts\python.exe scripts/infer.py --image data/demo/example_image.jpg --text "a spoon" "a bowl" --output outputs/smoke-text
-.\.venv\Scripts\python.exe scripts/infer.py --image data/demo/example_image.jpg --support-image data/demo/support.jpg --output outputs/smoke-visual
+$env:PYTHONIOENCODING = "utf-8"; .\.venv\Scripts\python.exe -m unittest discover -s tests   # 51 tests
 ```
 
-Lượt đầu tải checkpoint từ Hugging Face. `--device auto` chọn CUDA nếu có, CPU nếu không. Môi trường Windows ở đây dùng CPU. Để chạy Colab/Kaggle GPU, cài PyTorch theo môi trường CUDA của notebook trước, rồi cài các dependency còn lại; không thay wheel CUDA bằng wheel CPU Windows.
+`scripts/infer.py` accepts a text prompt or `--support-image`. It writes a probability map (`.npy`), a mask, a heatmap, an overlay and run metadata.
 
-Ảnh demo lấy từ [repo tác giả](https://github.com/timojl/clipseg/blob/master/example_image.jpg); chỉ dùng kiểm tra inference, không dùng tính IoU vì chưa có GT. `support.jpg` là crop minh họa từ cùng ảnh demo, nên **không phải protocol support ảnh khác của E2**. Với ảnh cá nhân, thay hai đường dẫn bằng ảnh query và ảnh support của bạn.
+To score saved predictions against masks, run `scripts/evaluate.py --manifest <csv> --threshold 0.3`. The manifest has columns `id,probability,mask`.
 
-## Tính metric từ probability đã lưu
+**Kaggle notebooks:**
+- The notebooks for E1–E5 are in [`source/`](source/), with instructions in [source/README.md](source/README.md).
+- They are generated by the `scripts/build_*_notebook.py` scripts, so edit those scripts rather than the `.ipynb` files.
+- The PhraseCut dataset comes from [PhraseCutDataset](https://github.com/ChenyunWu/PhraseCutDataset).
 
-CSV manifest gồm `id,probability,mask`; đường dẫn tương đối với thư mục chứa CSV. Probability là `.npy` hai chiều, mask PNG một kênh có giá trị 0/1 hoặc 0/255, cùng kích thước; không truyền trực tiếp semantic-label PNG.
+## Repository layout
 
-```powershell
-.\.venv\Scripts\python.exe scripts/evaluate.py --manifest path/to/manifest.csv --threshold 0.3 --output outputs/e1
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```text
+src/clipseg_project/   inference and metric code
+scripts/               CLI inference/evaluation, notebook builders, paper-protocol comparison
+source/                generated Kaggle notebooks (E1-E5) and their run guide (Vietnamese)
+tests/                 unit tests for metrics, PhraseCut+ sampling, notebooks, LoRA and SAM
+third_party/clipseg    the authors' code (git submodule, pinned commit)
 ```
 
-Mean IoU là trung bình theo query, cumulative IoU là tổng giao / tổng hợp. AP là AP pixel theo query rồi trung bình; không khẳng định tương đương AP bài báo. Manifest có GT trống sẽ bị từ chối trong protocol này. Xem [protocol](docs/implementation-plan.md) trước khi báo số liệu.
+## Credits
 
-`requirements.txt` pin dependency trực tiếp. Sau kiểm tra môi trường, `requirements-lock-windows.txt` ghi các phiên bản đầy đủ dùng tại máy này. `run.json` lưu commit checkpoint, phiên bản, số tham số và cấu hình. Thời gian smoke là một lượt chưa warm-up, không dùng làm benchmark tốc độ.
-
-Dataset và output bỏ qua trong Git. Không đưa token vào repo. Nguồn dataset chính: [PhraseCutDataset](https://github.com/ChenyunWu/PhraseCutDataset); chưa tải benchmark trong bước khởi tạo này.
+CLIPSeg is by Timo Lüddecke and Alexander Ecker: [paper](https://arxiv.org/abs/2112.10003) and [code](https://github.com/timojl/clipseg). The authors' repository is included as a submodule at commit `77c4e2d`. SAM is by Kirillov et al.: [code](https://github.com/facebookresearch/segment-anything).

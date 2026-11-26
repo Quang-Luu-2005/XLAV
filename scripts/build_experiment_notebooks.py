@@ -5,9 +5,11 @@ from the E1 notebook so the three experiments share one protocol. Rerun after ed
 
     python scripts/build_experiment_notebooks.py
 """
+import ast
 import json
 import textwrap
 from pathlib import Path
+from build_e4_notebook import MODULE as E4_MODULE
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "source"
@@ -156,7 +158,8 @@ Nếu `DECODER_CHECKPOINT` được đặt, decoder được thay bằng decoder
 (CLIP vẫn là backbone đóng băng của checkpoint gốc). Epoch, batch size và lịch sử loss đọc từ checkpoint
 được ghi vào `summary.json` và `run.json`. E1 chỉ train trên split `train`, nên miniv vẫn là dữ liệu chưa thấy.
 
-Model, rasterize GT và metric giống hệt E1. `predict` nhận **hoặc** danh sách text prompt
+Model, tiền xử lý ảnh (352×352 như CLIPSeg gốc), rasterize GT và metric giống hệt E1, gồm cả bộ metric
+theo protocol paper (`paper_protocol`: miou_0.3, fgiou_0.3, AP ở 352×352). `predict` nhận **hoặc** danh sách text prompt
 **hoặc** danh sách ảnh support (truyền vào `conditional_pixel_values` của CLIPSeg),
 luôn dự đoán trên cùng một ảnh query. Logits nội suy bilinear về kích thước gốc rồi sigmoid.
 
@@ -173,17 +176,22 @@ if DECODER_CHECKPOINT:
     checkpoint = torch.load(decoder_path, map_location="cpu", weights_only=True)
     if checkpoint.get("base_model_id") != MODEL_ID or checkpoint.get("base_model_revision") != MODEL_REVISION:
         raise ValueError("Checkpoint được train trên base model/revision khác MODEL_ID/MODEL_REVISION.")
+    training = checkpoint.get("training") or {}
+    if checkpoint.get("lora"):
+        adapter = training.get("lora") or {}
+        attach_lora(model, adapter.get("rank", 8), adapter.get("alpha", 16))
+        load_lora_state(model, checkpoint["lora"])
     model.decoder.load_state_dict(checkpoint["decoder"])
     model.eval()
-    training = checkpoint.get("training") or {}
-    decoder_info = {"source": "e1_trained_decoder", "checkpoint": str(decoder_path),
+    decoder_info = {"source": "e4_trained_decoder" if training.get("arm") else "e1_trained_decoder", "checkpoint": str(decoder_path),
         "checkpoint_sha256": sha256(decoder_path), "epoch": checkpoint["epoch"],
         "global_step": checkpoint["global_step"], "epochs_planned": training.get("epochs"),
         "batch_size": training.get("batch_size"), "initialization": training.get("initialization"),
         "selected_train_queries": training.get("selected_train_queries"),
         # Checkpoint của bản E1 cũ không ghi train_mode: bản đó chỉ train bằng text.
         "train_mode": training.get("train_mode", "text_only" if training else None),
-        "history": checkpoint.get("history")}
+        "history": checkpoint.get("history"), "experiment_arm": training.get("arm"),
+        "decoder_arch": training.get("decoder_arch", "clipseg"), "lora": training.get("lora")}
     if training.get("epochs") is not None and checkpoint["epoch"] != training["epochs"]:
         print(f"Cảnh báo: checkpoint epoch {checkpoint['epoch']}/{training['epochs']}, không phải epoch cuối.")
     del checkpoint
@@ -193,40 +201,49 @@ print("Decoder:", json.dumps({k: v for k, v in decoder_info.items() if k != "his
 PREDICT = """
 @torch.inference_mode()
 def predict(image, prompts=None, supports=None):
-    \"\"\"Return [N,H,W] probabilities for N text prompts or N support images on one query image.\"\"\"
+    \"\"\"Xác suất [N,H,W] ở kích thước gốc và [N,352,352] để chấm theo paper, cho N prompt trên một ảnh query.\"\"\"
     if (prompts is None) == (supports is None):
         raise ValueError("Truyền text prompts hoặc support images, không cả hai.")
     count = len(prompts) if prompts is not None else len(supports)
-    inputs = dict(processor(images=[image] * count, return_tensors="pt"))
+    # Tiền xử lý như CLIPSeg gốc (paper_pixel_values), cho cả ảnh query lẫn ảnh support.
+    inputs = {"pixel_values": paper_pixel_values(image).unsqueeze(0).repeat(count, 1, 1, 1)}
     if prompts is not None:
         inputs.update(processor.tokenizer(text=list(prompts), padding=True, truncation=True, return_tensors="pt"))
     else:
-        inputs["conditional_pixel_values"] = processor(images=list(supports), return_tensors="pt")["pixel_values"]
+        inputs["conditional_pixel_values"] = torch.stack([s if isinstance(s, torch.Tensor) else paper_pixel_values(s)
+                                                         for s in supports])
     inputs = {k: v.to(device) for k, v in inputs.items()}
     synchronize()
     started = time.perf_counter()
     context = torch.autocast(device_type="cuda", dtype=torch.float16) if USE_AMP else nullcontext()
     with context:
-        logits = model(**inputs).logits
-    if logits.ndim == 2:
-        logits = logits.unsqueeze(0)
-    probabilities = F.interpolate(logits.float().unsqueeze(1), size=(image.height, image.width),
+        logits = experiment_logits(model, **inputs)
+    logits = logits.float().reshape(count, *logits.shape[-2:])
+    probabilities = F.interpolate(logits.unsqueeze(1), size=(image.height, image.width),
         mode="bilinear", align_corners=False).squeeze(1).sigmoid()
     synchronize()
     seconds = time.perf_counter() - started
     values = probabilities.cpu().numpy()
     if not np.isfinite(values).all():
         raise ValueError("Prediction chứa NaN/Inf; thử USE_AMP=False.")
-    return values, seconds
+    return values, logits.sigmoid().cpu().numpy(), seconds
 
-def evaluate(probability, target, base):
-    \"\"\"Metric tại THRESHOLD (kèm pixel AP) và các dòng quét ngưỡng cho calibration.\"\"\"
+paper_stats = defaultdict(list)   # biến thể -> tp/fp/fn/tn tại 49 ngưỡng của từng dòng metric
+
+def evaluate(probability, target, base, probability_352):
+    \"\"\"Metric tại THRESHOLD (kèm pixel AP), các dòng quét ngưỡng, và stats theo protocol paper ở 352×352.\"\"\"
     row = {**base, "threshold": THRESHOLD, **binary_metrics(probability, target, THRESHOLD),
            "pixel_ap": float(average_precision_score(target.ravel(), probability.ravel()))}
     sweep = [{**base, "threshold": t, **binary_metrics(probability, target, t)} for t in THRESHOLD_GRID]
+    paper_stats[base["variant"]].append(paper_threshold_stats(probability_352, paper_target(target)))
     return row, sweep
 
-def variant_report(rows, sweep_rows):
+def save_paper_stats():
+    np.savez_compressed(OUT / "paper_threshold_stats.npz", thresholds=PAPER_THRESHOLDS,
+        **{f"variant_{i}": np.stack(paper_stats[v]) for i, v in enumerate(paper_stats)})
+    return {f"variant_{i}": v for i, v in enumerate(paper_stats)}
+
+def variant_report(rows, sweep_rows, stats):
     \"\"\"Ngưỡng cố định trên mọi query; ngưỡng bổ sung chọn chỉ trên calibration.\"\"\"
     table = []
     for threshold in THRESHOLD_GRID:
@@ -240,6 +257,7 @@ def variant_report(rows, sweep_rows):
         "calibration_selected_threshold": best,
         "evaluation_calibrated_threshold": summarize([r for r in sweep_rows
             if r["group"] == "evaluation" and r["threshold"] == best]),
+        "paper_protocol": paper_metrics(stats),
     }, table
 
 def paired_comparison(base_iou, other_iou, image_of, n_bootstrap, tie_tolerance, seed):
@@ -278,7 +296,10 @@ def save_mask(probability, variant, stem):
 
 def table_row(name, report, comparison):
     fixed = report["all_fixed_threshold"]
-    return {"variant": name, "rows": fixed["n_queries"], "mean_iou": fixed["mean_sample_iou"],
+    paper = report["paper_protocol"]
+    return {"variant": name, "rows": fixed["n_queries"],
+        "paper_miou_0.3": paper["miou_0.3"], "paper_fgiou_0.3": paper["fgiou_0.3"], "paper_ap": paper["ap"],
+        "mean_iou": fixed["mean_sample_iou"],
         "cumulative_iou": fixed["cumulative_iou"], "mean_dice": fixed["mean_dice"],
         "mean_pixel_ap": fixed["mean_sample_pixel_ap"], "precision_at_0.5": fixed["precision_at_0.5"],
         "calibrated_threshold": report["calibration_selected_threshold"],
@@ -288,7 +309,8 @@ def table_row(name, report, comparison):
            ["delta_mean_iou", "ci95_low", "ci95_high", "wins", "ties", "losses"]}}
 
 def print_table(rows):
-    columns = ["variant", "rows", "mean_iou", "cumulative_iou", "mean_pixel_ap", "delta_mean_iou", "ci95_low", "ci95_high", "wins", "losses"]
+    columns = ["variant", "rows", "paper_miou_0.3", "paper_fgiou_0.3", "paper_ap", "mean_iou",
+               "delta_mean_iou", "ci95_low", "ci95_high", "wins", "losses"]
     print(" | ".join(columns))
     for row in rows:
         print(" | ".join(f"{row[c]:.4f}" if isinstance(row[c], float) else str(row[c]) for c in columns))
@@ -315,7 +337,13 @@ def run_metadata(extra):
     }
 """
 
-MODEL_CELL = (e1("cell-11", end="@torch.inference_mode()") + LOAD_DECODER + "\n"
+# LoRA helpers and the shared forward of the E4 notebook, so E2/E3 can evaluate an E4c checkpoint.
+E4_CODE = "LORA_GRAD_CHECKPOINT = False\n" + ast.unparse(ast.Module(body=[node for node in ast.parse(E4_MODULE).body
+    if isinstance(node, (ast.Import, ast.ImportFrom, ast.ClassDef, ast.FunctionDef))], type_ignores=[])) + "\n"
+TRAIN_SUPPORT_CODE = ast.unparse(ast.Module(body=[node for node in ast.parse(e1("cell-13")).body
+    if isinstance(node, ast.FunctionDef) and node.name in {"random_square_crop", "gaussian_blur", "visual_prompt"}], type_ignores=[])) + "\n"
+
+MODEL_CELL = (e1("cell-11", end="@torch.inference_mode()") + E4_CODE + "\n" + LOAD_DECODER + "\n"
               + e1("cell-11", start="def binary_metrics") + PREDICT)
 
 PACKAGE = """
@@ -432,15 +460,15 @@ for image_id in tqdm(image_ids, desc="E3 images"):
     ious = defaultdict(dict)
     for start in range(0, len(jobs), BATCH_SIZE):
         chunk = jobs[start:start + BATCH_SIZE]
-        probabilities, seconds = predict(image, prompts=[tpl.format(phrase=t["phrase"]) for t, tpl in chunk])
+        probabilities, probabilities_352, seconds = predict(image, prompts=[tpl.format(phrase=t["phrase"]) for t, tpl in chunk])
         batch_times.append({"prompts": len(chunk), "forward_resize_seconds": seconds})
-        for (task, template), probability in zip(chunk, probabilities):
+        for (task, template), probability, probability_352 in zip(chunk, probabilities, probabilities_352):
             task_id = str(task["task_id"])
             base = {"task_id": task_id, "image_id": image_id, "phrase": task["phrase"],
                 "variant": template, "variant_key": template_keys[template],
                 "prompt": template.format(phrase=task["phrase"]), "group": group_for_image[image_id],
                 "width": image.width, "height": image.height}
-            row, sweep = evaluate(probability, targets[task_id], base)
+            row, sweep = evaluate(probability, targets[task_id], base, probability_352)
             rows.append(row)
             sweep_rows.extend(sweep)
             save_mask(probability, template_keys[template], task_id)
@@ -471,7 +499,8 @@ reports, calibration_rows, table = {}, [], []
 iou_by_template = {}
 for template in TEMPLATES:
     report, calibration_table = variant_report([r for r in rows if r["variant"] == template],
-                                               [r for r in sweep_rows if r["variant"] == template])
+                                               [r for r in sweep_rows if r["variant"] == template],
+                                               paper_stats[template])
     reports[template] = report
     calibration_rows += [{"variant": template, **r} for r in calibration_table]
     iou_by_template[template] = {r["task_id"]: r["iou"] for r in rows if r["variant"] == template}
@@ -482,10 +511,14 @@ for template in TEMPLATES:
     table.append({"variant_key": template_keys[template], **table_row(template, reports[template], comparison)})
 write_csv(OUT / "calibration_thresholds.csv", calibration_rows)
 write_csv(OUT / "e3_template_table.csv", table)
+paper_stats_keys = save_paper_stats()
 summary = {"experiment": "E3_prompt_templates", "decoder": decoder_info, "dataset": "VGPhraseCut", "split": EVAL_SPLIT,
     "n_queries": len(selected), "complete_official_split": len(selected) == len(tasks),
     "baseline_template": BASELINE_TEMPLATE, "templates": reports,
-    "metric_note": "IoU averaged per query at t=0.3; ΔIoU paired per query; CI is image-level bootstrap."}
+    "paper_threshold_stats_keys": paper_stats_keys,
+    "metric_note": ("paper_protocol per template follows CLIPSeg score.py/FixedIntervalMetrics at 352x352; "
+                    "other metrics at original resolution, IoU averaged per query at t=0.3; ΔIoU paired per query; "
+                    "CI is image-level bootstrap.")}
 write_json(OUT / "summary.json", summary)
 write_json(OUT / "run.json", run_metadata({"experiment": "E3_prompt_templates", "max_queries": MAX_QUERIES,
     "batch_size": BATCH_SIZE, "templates": template_keys, "baseline_template": BASELINE_TEMPLATE,
@@ -560,11 +593,13 @@ Kết quả ghi đè thư mục output; tải ZIP của lượt pretrained trư�
 E2_CONFIG = """
 from pathlib import Path
 
-MAX_QUERIES = 30                 # kế hoạch E2: 30 query; 8 = smoke
+MAX_QUERIES = 30                 # 30 = pilot; 8 = smoke; None = mọi query đủ support
 SUPPORTS_PER_QUERY = 3           # mỗi query dùng đúng K support từ K ảnh khác nhau
 MIN_SUPPORT_BOX_FRACTION = 0.02  # bỏ support có vật quá nhỏ
 CROP_PADDING = 0.1               # nới bbox support 10% mỗi phía trước khi crop
 DARK_FACTOR = 0.1                # nền giữ 10% độ sáng, như Bảng 2 của paper
+SUPPORT_VIEW_MODE = "legacy"    # legacy: ba biến thể cũ | train_matched: visual_prompt giống hệt lúc train
+SUPPORT_AUG_CROP = True          # train_matched: crop vuông như train, seed cố định theo support ID
 BATCH_SIZE = 9                   # số visual prompt mỗi forward (support × biến thể); giảm nếu thiếu VRAM
 OUTPUT_NAME = "clipseg_e2_text_vs_visual"
 """ + COMMON_CONFIG
@@ -579,7 +614,7 @@ và đủ lớn. Chọn query và support bằng seed 42, rồi chia calibration
 
 E2_SELECT = e1("cell-07", end="selected = sorted(tasks") + """
 assert all(str(t.get("phrase_structure", {}).get("name", "")).strip() for t in tasks), "Thiếu phrase_structure.name."
-assert SUPPORTS_PER_QUERY >= 1 and MAX_QUERIES >= 1 and 0 <= MIN_SUPPORT_BOX_FRACTION < 1
+assert SUPPORTS_PER_QUERY >= 1 and (MAX_QUERIES is None or MAX_QUERIES >= 1) and 0 <= MIN_SUPPORT_BOX_FRACTION < 1
 
 def target_key(task):
     return task["phrase_structure"]["name"].strip().lower()
@@ -601,10 +636,10 @@ for task in ordered:
     if len(candidates) >= SUPPORTS_PER_QUERY:
         eligible.append((task, candidates))
 rng = random.Random(SEED)
-chosen = rng.sample(eligible, min(MAX_QUERIES, len(eligible)))
+chosen = eligible.copy() if MAX_QUERIES is None else rng.sample(eligible, min(MAX_QUERIES, len(eligible)))
 chosen.sort(key=lambda pair: (int(pair[0]["image_id"]), str(pair[0]["task_id"])))
 pairs = [{"query": task, "supports": rng.sample(candidates, SUPPORTS_PER_QUERY)} for task, candidates in chosen]
-if len(pairs) < MAX_QUERIES:
+if MAX_QUERIES is not None and len(pairs) < MAX_QUERIES:
     print(f"Chỉ có {len(pairs)} query có đủ support hợp lệ (yêu cầu {MAX_QUERIES}); báo cáo đúng N này.")
 if len(pairs) < 2:
     raise ValueError("Không đủ query có support hợp lệ; giảm SUPPORTS_PER_QUERY hoặc MIN_SUPPORT_BOX_FRACTION.")
@@ -642,7 +677,8 @@ Mask lưu tại `masks/<variant>/<task_id>.png` (text) và `masks/<variant>/<tas
 
 E2_RUN = """
 TEXT_VARIANTS = ["text_phrase", "text_name"]
-VISUAL_VARIANTS = ["visual_crop", "visual_dark", "visual_crop_dark"]
+assert SUPPORT_VIEW_MODE in ["legacy", "train_matched"]
+VISUAL_VARIANTS = ["visual_crop", "visual_dark", "visual_crop_dark"] if SUPPORT_VIEW_MODE == "legacy" else ["visual_train"]
 VARIANTS = TEXT_VARIANTS + VISUAL_VARIANTS
 BASELINE_VARIANT = "text_phrase"
 assert BATCH_SIZE >= 1
@@ -661,20 +697,45 @@ def support_views(image, mask, crop_padding, dark_factor):
     dark = Image.fromarray(np.where(mask[..., None], rgb, rgb * dark_factor).round().astype(np.uint8))
     return {"visual_crop": image.crop(box), "visual_dark": dark, "visual_crop_dark": dark.crop(box)}
 
+def training_support_seed(task_id):
+    return int(hashlib.sha256(f"{SEED}:{task_id}".encode()).hexdigest()[:8], 16)
+
+def training_support(image, mask, seed=None):
+    # Same operations as load_train_sample + visual_prompt, with a fixed per-support crop draw.
+    pixels = torch.from_numpy(np.asarray(image, dtype=np.float32).copy()).permute(2, 0, 1)
+    target = mask
+    if SUPPORT_AUG_CROP:
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(SEED if seed is None else seed)
+            y, x, side = random_square_crop(target)
+        pixels, target = pixels[:, y:y + side, x:x + side], target[y:y + side, x:x + side]
+    pixels = F.interpolate(pixels.unsqueeze(0), size=(352, 352), mode="bilinear", align_corners=True)[0]
+    target = F.interpolate(torch.from_numpy(target.astype(np.float32))[None, None],
+                           size=(352, 352), mode="nearest")[0, 0]
+    pixels = (pixels / 255 - image_mean) / image_std
+    return visual_prompt(pixels, target, background_factor=DARK_FACTOR, context=CROP_PADDING)
+
+def support_preview(value):
+    if isinstance(value, torch.Tensor):
+        rgb = value * image_std + image_mean
+        return rgb.permute(1, 2, 0).clamp(0, 1).numpy()
+    return value
+
 views_cache = {}
 def views_for(support):
     key = str(support["task_id"])
     if key not in views_cache:
         image = load_rgb(int(support["image_id"]))
         mask = rasterize_gt(support, image.width, image.height)
-        views_cache[key] = support_views(image, mask, CROP_PADDING, DARK_FACTOR)
+        views_cache[key] = (support_views(image, mask, CROP_PADDING, DARK_FACTOR) if SUPPORT_VIEW_MODE == "legacy"
+                            else {"visual_train": training_support(image, mask, training_support_seed(key))})
     return views_cache[key]
 
 def save_pair_figure(image, target, pair, probabilities, ious, index):
     task, support = pair["query"], pair["supports"][0]
     panels = [("Ảnh query", image), ("Ground truth", target),
               (f"text_phrase IoU={ious['text_phrase']:.3f}", overlay(image, probabilities["text_phrase"])),
-              (f"Support: {support['phrase']}", views_for(support)["visual_crop_dark"])]
+              (f"Support: {support['phrase']}", support_preview(views_for(support)[VISUAL_VARIANTS[-1]]))]
     panels += [(f"{v} IoU={ious[v]:.3f}", overlay(image, probabilities[v])) for v in VISUAL_VARIANTS]
     fig, axes = plt.subplots(1, len(panels), figsize=(4 * len(panels), 4))
     for ax, (title, value) in zip(axes, panels):
@@ -704,11 +765,11 @@ for index, pair in enumerate(tqdm(pairs, desc="E2 queries")):
             "group": group_for_image[image_id], "width": image.width, "height": image.height}
     first_probabilities, first_ious = {}, {}
     text_prompts = {"text_phrase": task["phrase"], "text_name": target_key(task)}
-    probabilities, seconds = predict(image, prompts=list(text_prompts.values()))
+    probabilities, probabilities_352, seconds = predict(image, prompts=list(text_prompts.values()))
     batch_times.append({"prompts": len(text_prompts), "forward_resize_seconds": seconds})
-    for (variant, prompt), probability in zip(text_prompts.items(), probabilities):
+    for (variant, prompt), probability, probability_352 in zip(text_prompts.items(), probabilities, probabilities_352):
         row, sweep = evaluate(probability, target, {**base, "variant": variant, "prompt": prompt,
-                                                    "support_task_id": "", "support_image_id": ""})
+                                                    "support_task_id": "", "support_image_id": ""}, probability_352)
         rows.append(row)
         sweep_rows.extend(sweep)
         save_mask(probability, variant, task_id)
@@ -716,12 +777,12 @@ for index, pair in enumerate(tqdm(pairs, desc="E2 queries")):
     jobs = [(support, variant) for support in pair["supports"] for variant in VISUAL_VARIANTS]
     for start in range(0, len(jobs), BATCH_SIZE):
         chunk = jobs[start:start + BATCH_SIZE]
-        probabilities, seconds = predict(image, supports=[views_for(s)[v] for s, v in chunk])
+        probabilities, probabilities_352, seconds = predict(image, supports=[views_for(s)[v] for s, v in chunk])
         batch_times.append({"prompts": len(chunk), "forward_resize_seconds": seconds})
-        for (support, variant), probability in zip(chunk, probabilities):
+        for (support, variant), probability, probability_352 in zip(chunk, probabilities, probabilities_352):
             row, sweep = evaluate(probability, target, {**base, "variant": variant,
                 "prompt": f"support:{support['task_id']}", "support_task_id": str(support["task_id"]),
-                "support_image_id": int(support["image_id"])})
+                "support_image_id": int(support["image_id"])}, probability_352)
             rows.append(row)
             sweep_rows.extend(sweep)
             save_mask(probability, variant, f"{task_id}__{support['task_id']}")
@@ -751,7 +812,8 @@ reports, calibration_rows, table = {}, [], []
 iou_by_variant = {}
 for variant in VARIANTS:
     variant_rows = [r for r in rows if r["variant"] == variant]
-    report, calibration_table = variant_report(variant_rows, [r for r in sweep_rows if r["variant"] == variant])
+    report, calibration_table = variant_report(variant_rows, [r for r in sweep_rows if r["variant"] == variant],
+                                               paper_stats[variant])
     reports[variant] = report
     calibration_rows += [{"variant": variant, **r} for r in calibration_table]
     per_query = defaultdict(list)
@@ -766,15 +828,20 @@ for variant in VARIANTS:
     table.append(table_row(variant, reports[variant], comparison))
 write_csv(OUT / "calibration_thresholds.csv", calibration_rows)
 write_csv(OUT / "e2_variant_table.csv", table)
+paper_stats_keys = save_paper_stats()
 summary = {"experiment": "E2_text_vs_visual", "decoder": decoder_info, "dataset": "VGPhraseCut", "split": EVAL_SPLIT,
     "n_queries": len(pairs), "supports_per_query": SUPPORTS_PER_QUERY, "baseline_variant": BASELINE_VARIANT,
     "variants": reports,
-    "metric_note": ("Text rows: one per query; visual rows: one per query×support. "
+    "paper_threshold_stats_keys": paper_stats_keys,
+    "metric_note": ("paper_protocol per variant follows CLIPSeg score.py/FixedIntervalMetrics at 352x352 "
+                    "(visual rows pooled over query×support). Text rows: one per query; visual rows: one per query×support. "
                     "ΔIoU is per query after averaging visual IoU over supports; CI is image-level bootstrap.")}
 write_json(OUT / "summary.json", summary)
 write_json(OUT / "run.json", run_metadata({"experiment": "E2_text_vs_visual", "max_queries": MAX_QUERIES,
     "supports_per_query": SUPPORTS_PER_QUERY, "min_support_box_fraction": MIN_SUPPORT_BOX_FRACTION,
-    "crop_padding": CROP_PADDING, "dark_factor": DARK_FACTOR, "variants": VARIANTS, "batch_size": BATCH_SIZE,
+    "crop_padding": CROP_PADDING, "dark_factor": DARK_FACTOR, "support_view_mode": SUPPORT_VIEW_MODE,
+    "support_aug_crop": SUPPORT_AUG_CROP if SUPPORT_VIEW_MODE == "train_matched" else False,
+    "variants": VARIANTS, "batch_size": BATCH_SIZE,
     "pairs_sha256": sha256(OUT / "e2_pairs.json"),
     "calibration_image_ids": sorted(calibration_ids),
     "evaluation_image_ids": sorted(set(query_image_ids) - calibration_ids)}))
@@ -795,7 +862,7 @@ e2 = notebook([
     ("markdown", MODEL_MD),
     ("code", MODEL_CELL),
     ("markdown", E2_RUN_MD),
-    ("code", E2_RUN),
+    ("code", TRAIN_SUPPORT_CODE + E2_RUN),
     ("markdown", E2_SUMMARY_MD),
     ("code", E2_SUMMARY),
     ("markdown", "## 8. Xem hình và đóng gói\n\nTải `clipseg_e2_text_vs_visual.zip` trong Kaggle Output."),
